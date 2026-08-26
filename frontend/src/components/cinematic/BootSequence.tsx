@@ -123,27 +123,42 @@ export function BootSequence({ onDone, onReplay }: { onDone: () => void; onRepla
     return FALLBACK_STEPS
   }, [status])
 
+  /* The bring-up runs on a schedule, so the effect keys on how many steps
+     there are rather than on the array. With a backend reachable the status
+     poll rebuilds `steps` every few seconds, and depending on its identity
+     restarted the whole sequence each time. */
+  const count = steps.length
   useEffect(() => {
     const timers: number[] = []
     timers.push(window.setTimeout(() => setIndex(0), 1100))
-    steps.forEach((_, i) => {
+    for (let i = 0; i < count; i += 1) {
       timers.push(window.setTimeout(() => setIndex(i + 1), 1100 + (i + 1) * STEP_MS))
-    })
-    timers.push(
-      window.setTimeout(() => setArmed(true), 1100 + (steps.length + 1) * STEP_MS),
-    )
+    }
+    timers.push(window.setTimeout(() => setArmed(true), 1100 + (count + 1) * STEP_MS))
     return () => timers.forEach(window.clearTimeout)
-  }, [steps])
+  }, [count])
 
-  /* Auto-entry, cancelled the moment the operator reaches for the card. */
+  /*
+   * Auto-entry, cancelled the moment the operator reaches for the card.
+   *
+   * The callback is held in a ref rather than named as a dependency. Callers
+   * pass an inline arrow, so its identity changes on every render of the
+   * console - and the console re-renders with every telemetry frame. Depending
+   * on it meant this effect tore down and rebuilt its own timer several times a
+   * second, the timeout never reached 3600ms, and the card sat on top of the
+   * application forever swallowing every click.
+   */
+  const done = useRef(onDone)
+  done.current = onDone
+
   useEffect(() => {
     if (!armed || held) return
     const id = window.setTimeout(() => {
       setClosing(true)
-      window.setTimeout(onDone, 620)
+      window.setTimeout(() => done.current(), 620)
     }, 3600)
     return () => window.clearTimeout(id)
-  }, [armed, held, onDone])
+  }, [armed, held])
 
   const enter = () => {
     setClosing(true)
@@ -166,10 +181,20 @@ export function BootSequence({ onDone, onReplay }: { onDone: () => void; onRepla
         >
           <ApproachCanvas phase={index} />
 
+          {/*
+            Holding the countdown is for when the operator reaches for the card.
+            It has to key on intent the operator actually expressed: the primary
+            action carries autoFocus for keyboard users, focus bubbles, and an
+            onFocus here therefore fired on mount and cancelled the countdown
+            permanently - leaving this card on top of the console swallowing
+            every click. Pointer intent instead, and reversible, so drifting
+            across the card does not wedge it either.
+          */}
           <div
             className="boot__inner"
-            onMouseEnter={() => setHeld(true)}
-            onFocus={() => setHeld(true)}
+            onPointerEnter={() => setHeld(true)}
+            onPointerLeave={() => setHeld(false)}
+            onKeyDown={() => setHeld(true)}
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.86, rotate: -18 }}

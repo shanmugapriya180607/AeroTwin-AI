@@ -10,7 +10,7 @@
  * is what lets the first paint happen before any of it has arrived.
  */
 
-import { Suspense, lazy, useEffect, useRef } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useRef } from 'react'
 import { Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useTwin } from './store/useTwin'
@@ -103,6 +103,11 @@ export default function Console() {
   const navigate = useNavigate()
   const cardRef = useRef<HTMLDivElement>(null)
 
+  /* Stable identities. The card times itself, and a callback that changes on
+     every telemetry frame is a timer that never fires. */
+  const bootDone = useCallback(() => setIntroPhase('READY'), [setIntroPhase])
+  const replayIntro = useCallback(() => navigate('/intro'), [navigate])
+
   const inMission = flightMode === 'MISSION' || flightMode === 'TRANSITION_OUT'
   const dashboardVisible = flightMode === 'DASHBOARD' || flightMode === 'TRANSITION_IN'
 
@@ -115,10 +120,7 @@ export default function Console() {
   return (
     <>
       {introPhase === 'BOOT' && (
-        <BootSequence
-          onDone={() => setIntroPhase('READY')}
-          onReplay={() => navigate('/intro')}
-        />
+        <BootSequence onDone={bootDone} onReplay={replayIntro} />
       )}
 
       {/* The dashboard recedes rather than disappearing, so the UAV reads as
