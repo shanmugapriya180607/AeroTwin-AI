@@ -1,0 +1,111 @@
+/*
+  AEROTWIN design tokens - premium white aerospace.
+
+  The console is read in a lit engineering space, on a projector, and over a
+  shoulder. The ground is therefore paper-white with a cool blue cast, and
+  colour is spent where it carries meaning: status, provenance, and the
+  expected/actual pair. The 3D stages supply the depth; the surfaces stay flat,
+  precise and quiet.
+*/
+
+:root {
+  /* -- ground ----------------------------------------------------------- */
+  --void: #eef3fa;
+  --bg: #f4f7fc;
+  --bg-raised: #ffffff;
+  --panel: #ffffff;
+  --panel-2: #f6f9fd;
+  --panel-3: #eef3fa;
+  --hairline: #e3eaf4;
+  --hairline-strong: #cddaea;
+
+  /* Scrims for glass over 3D. Light, never black. */
+  --scrim-1: rgba(255, 255, 255, 0.62);
+  --scrim-2: rgba(255, 255, 255, 0.82);
+  --scrim-3: rgba(255, 255, 255, 0.94);
+  --scrim-edge: rgba(255, 255, 255, 0);
+
+  /* -- ink -------------------------------------------------------------- */
+  --ink: #0b1a2e;
+  --ink-2: #2c4056;
+  --ink-3: #5a7089;
+  --ink-4: #8496ac;
+  --ink-5: #b2c1d3;
+
+  /* -- status ----------------------------------------------------------- */
+  --ok: #0aa06e;
+  --ok-dim: rgba(10, 160, 110, 0.10);
+  --caution: #d99a00;
+  --caution-dim: rgba(217, 154, 0, 0.11);
+  --warn: #ef7a1a;
+  --warn-dim: rgba(239, 122, 26, 0.11);
+  --crit: #e13232;
+  --crit-dim: rgba(225, 50, 50, 0.10);
+  --info: #1668e3;
+  --info-dim: rgba(22, 104, 227, 0.09);
+
+  /* -- semantic: the twin's two halves ---------------------------------- */
+  --expected: #7691b6;     /* what physics says should happen */
+  --actual: #0b1a2e;       /* what the sensors report */
+  --residual: #7739e0;     /* the difference - the whole project */
+  --residual-dim: rgba(119, 57, 224, 0.10);
+
+  /* -- provenance ------------------------------------------------------- */
+  --real: #0aa06e;
+  --simulated: #7739e0;
+  --derived: #1668e3;
+  --demo: #d99a00;
+
+  /* -- accent: aerospace blue, with cyan as its second note ------------- */
+  --accent: #0a6ed6;
+  --accent-2: #0aa7c2;
+  --accent-3: #10b6a4;
+  --accent-dim: rgba(10, 110, 214, 0.09);
+  --accent-soft: rgba(10, 110, 214, 0.16);
+
+  /* -- type ------------------------------------------------------------- */
+  --sans: 'Inter', 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --mono: 'JetBrains Mono', 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  --t-micro: 9.5px;
+  --t-label: 10.5px;
+  --t-small: 11.5px;
+  --t-body: 13px;
+  --t-lead: 15px;
+  --t-num: 20px;
+  --t-num-lg: 32px;
+  --t-hero: 46px;
+
+  --track: 0.14em;
+  --track-wide: 0.22em;
+
+  /* -- geometry --------------------------------------------------------- */
+  --r-sm: 3px;
+  --r: 5px;
+  --r-lg: 10px;
+  --r-xl: 14px;
+
+  --gap-1: 4px;
+  --gap-2: 8px;
+  --gap-3: 12px;
+  --gap-4: 16px;
+  --gap-5: 22px;
+  --gap-6: 30px;
+
+  --rail: 62px;
+  --topbar: 56px;
+
+  /* -- depth: cool, soft, never black --------------------------------- */
+  --shadow-1: 0 1px 2px rgba(19, 46, 84, 0.06), 0 1px 1px rgba(19, 46, 84, 0.04);
+  --shadow-2: 0 4px 18px rgba(19, 46, 84, 0.09), 0 1px 3px rgba(19, 46, 84, 0.05);
+  --shadow-3: 0 22px 60px rgba(19, 46, 84, 0.16), 0 2px 8px rgba(19, 46, 84, 0.06);
+  --glow-ok: 0 0 0 1px rgba(10, 160, 110, 0.28), 0 0 22px rgba(10, 160, 110, 0.10);
+  --glow-crit: 0 0 0 1px rgba(225, 50, 50, 0.3), 0 0 26px rgba(225, 50, 50, 0.12);
+
+  /* -- motion ----------------------------------------------------------- */
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --fast: 140ms;
+  --mid: 300ms;
+  --slow: 640ms;
+}

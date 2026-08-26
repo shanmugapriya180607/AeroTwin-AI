@@ -1,0 +1,55 @@
+# dependencies
+node_modules/
+
+# python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# builds
+frontend/dist/
+build/
+*.tsbuildinfo
+
+# environment - never commit real values
+.env
+.env.*
+!.env.example
+
+# The reference corpus is mounted, never vendored - but the small synthetic
+# demo corpus ships, or a fresh clone opens on a configuration error.
+#
+# Note the `data/*` rather than `data/`: git does not descend into an excluded
+# directory, so a trailing-slash exclusion here would make every negation below
+# it dead and silently drop the demo corpus from the repository.
+data/*
+!data/demo/
+data/demo/*
+!data/demo/flights/
+data/demo/flights/*
+!data/demo/flights/*.csv
+!data/demo/flights/*.md
+*.parquet
+
+# editors and tooling
+.vscode/
+.idea/
+*.swp
+.qodo/
+
+# os
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# logs and temporary files
+*.log
+npm-debug.log*
+tmp/
+.cache/
