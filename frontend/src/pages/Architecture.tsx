@@ -11,14 +11,19 @@
 import { useEffect, useState } from 'react'
 import { ArrowRight, Boxes, Repeat, Server } from 'lucide-react'
 import { api } from '../services/api'
-import { Badge, Empty, Kv, Note, PageHead } from '../components/ui/Primitives'
+import { Badge, Empty, Kv, Loading, Note, PageHead } from '../components/ui/Primitives'
 
 export default function Architecture() {
   const [data, setData] = useState<any>(null)
+  /* Distinguish 'not fetched yet' from 'not available'. */
+  const [loaded, setLoaded] = useState(false)
   const [pulse, setPulse] = useState(0)
 
   useEffect(() => {
-    void api.architecture().then((result) => result && setData(result))
+    void api.architecture().then((result) => {
+      if (result) setData(result)
+      setLoaded(true)
+    })
   }, [])
 
   useEffect(() => {
@@ -37,7 +42,9 @@ export default function Architecture() {
         actions={<Badge tone="info">ISO 23247 ALIGNED · ON-PREMISE</Badge>}
       />
 
-      {!lanes.length ? (
+      {!loaded ? (
+        <Loading height={320} />
+      ) : !lanes.length ? (
         <Empty
           label="Architecture unavailable"
           detail="RUNNING ON DEMO FEED"

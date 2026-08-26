@@ -15,7 +15,8 @@ import { useEffect, useState } from 'react'
 import { Braces, Database, FlaskConical, RefreshCw, Terminal } from 'lucide-react'
 import { api } from '../services/api'
 import {
-  Badge, Empty, Metrics, PageHead, ProvenanceTag, StatusRows, TagRow, fmt, pct,
+  Badge, Empty, Loading, Metrics, PageHead, ProvenanceTag, StatusRows, TagRow,
+  fmt, pct,
 } from '../components/ui/Primitives'
 
 /** Datasets considered. The verdict is the content; the reason is the tag. */
@@ -31,6 +32,9 @@ export default function DataModels() {
   const [ml, setMl] = useState<any>(null)
   const [prediction, setPrediction] = useState<any>(null)
   const [refreshing, setRefreshing] = useState(false)
+  /* null means 'not fetched yet' as well as 'not available', and the two
+     must not look the same on screen. */
+  const [loaded, setLoaded] = useState(false)
 
   const load = async () => {
     const [dict, mlStatus, predict] = await Promise.all([
@@ -41,6 +45,7 @@ export default function DataModels() {
     if (dict) setDictionary(dict)
     if (mlStatus) setMl(mlStatus)
     if (predict) setPrediction(predict)
+    setLoaded(true)
   }
 
   useEffect(() => {
@@ -90,7 +95,9 @@ export default function DataModels() {
           <Badge tone={real ? 'real' : 'demo'}>{real ? 'REAL' : 'SIMULATED'}</Badge>
         </header>
         <div className="panel__body panel__body--tight">
-          {!ingest ? (
+          {!loaded ? (
+            <Loading height={132} />
+          ) : !ingest ? (
             <Empty label="BACKEND UNREACHABLE" />
           ) : (
             <>
@@ -181,7 +188,9 @@ export default function DataModels() {
             <Badge tone={learned?.trained ? 'info' : 'caution'}>{learned?.state ?? '—'}</Badge>
           </header>
           <div className="panel__body panel__body--tight">
-            {!learned ? (
+            {!loaded ? (
+              <Loading height={188} />
+            ) : !learned ? (
               <Empty label="UNAVAILABLE" />
             ) : (
               <>
@@ -212,7 +221,9 @@ export default function DataModels() {
             <h2 className="panel__title">Fusion</h2>
           </header>
           <div className="panel__body panel__body--tight">
-            {ml ? (
+            {!loaded ? (
+              <Loading height={188} />
+            ) : ml ? (
               <StatusRows
                 rows={[
                   { k: 'BASELINE', v: 'RESIDUAL Z-SCORE' },
@@ -274,7 +285,11 @@ export default function DataModels() {
                   </tr>
                 ))}
                 {!channels.length && (
-                  <tr><td colSpan={5}><Empty label="UNAVAILABLE OFFLINE" /></td></tr>
+                  <tr>
+                    <td colSpan={5}>
+                      {loaded ? <Empty label="UNAVAILABLE OFFLINE" /> : <Loading height={180} />}
+                    </td>
+                  </tr>
                 )}
               </tbody>
             </table>
@@ -297,7 +312,9 @@ export default function DataModels() {
           </button>
         </header>
         <div className="panel__body panel__body--tight">
-          {!prediction ? (
+          {!loaded ? (
+            <Loading height={150} />
+          ) : !prediction ? (
             <Empty label="BACKEND UNREACHABLE" />
           ) : (
             <div className="grid" style={{ gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1.15fr)' }}>

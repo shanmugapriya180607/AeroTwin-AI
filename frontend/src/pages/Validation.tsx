@@ -12,7 +12,7 @@ import { BookOpen, ShieldCheck, TriangleAlert } from 'lucide-react'
 import { api } from '../services/api'
 import { AXIS, CHART_BASE, EChart } from '../components/charts/EChart'
 import {
-  Badge, Empty, Meter, Metrics, PageHead, StatusRows, TagRow, fmt,
+  Badge, Empty, Loading, Meter, Metrics, PageHead, StatusRows, TagRow, fmt,
 } from '../components/ui/Primitives'
 
 /** A limitation reduced to its verdict. The register keeps the detail. */
@@ -35,9 +35,14 @@ function reason(text: string, words = 4): string {
 
 export default function Validation() {
   const [data, setData] = useState<any>(null)
+  /* Distinguish 'not fetched yet' from 'not available'. */
+  const [loaded, setLoaded] = useState(false)
 
   useEffect(() => {
-    void api.validation().then((result) => result && setData(result))
+    void api.validation().then((result) => {
+      if (result) setData(result)
+      setLoaded(true)
+    })
   }, [])
 
   const report = data?.report
@@ -302,7 +307,8 @@ export default function Validation() {
                     meta={item.severity}
                   />
                 ))}
-                {!data?.limitations?.length && <Empty label="UNAVAILABLE" />}
+                {!data?.limitations?.length &&
+                  (loaded ? <Empty label="UNAVAILABLE" /> : <Loading height={200} />)}
               </div>
             </div>
             <div className="divider" />
@@ -359,7 +365,8 @@ export default function Validation() {
                   meta={reason(item.reason ?? item.detail ?? item.why ?? '', 3)}
                 />
               ))}
-              {!data?.rejected_datasets?.length && <Empty label="UNAVAILABLE" />}
+              {!data?.rejected_datasets?.length &&
+                (loaded ? <Empty label="UNAVAILABLE" /> : <Loading height={140} />)}
             </div>
           </div>
         </section>

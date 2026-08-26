@@ -20,7 +20,7 @@ const FALLBACK_STEPS = [
   { key: 'twin', label: 'DIGITAL TWIN SYNCHRONIZED' },
 ]
 
-const STEP_MS = 420
+const STEP_MS = 240
 
 /** A distant contact approaching: pure canvas, no 3D cost during startup. */
 function ApproachCanvas({ phase }: { phase: number }) {
@@ -130,11 +130,11 @@ export function BootSequence({ onDone, onReplay }: { onDone: () => void; onRepla
   const count = steps.length
   useEffect(() => {
     const timers: number[] = []
-    timers.push(window.setTimeout(() => setIndex(0), 1100))
+    timers.push(window.setTimeout(() => setIndex(0), 400))
     for (let i = 0; i < count; i += 1) {
-      timers.push(window.setTimeout(() => setIndex(i + 1), 1100 + (i + 1) * STEP_MS))
+      timers.push(window.setTimeout(() => setIndex(i + 1), 400 + (i + 1) * STEP_MS))
     }
-    timers.push(window.setTimeout(() => setArmed(true), 1100 + (count + 1) * STEP_MS))
+    timers.push(window.setTimeout(() => setArmed(true), 400 + (count + 1) * STEP_MS))
     return () => timers.forEach(window.clearTimeout)
   }, [count])
 
@@ -145,7 +145,7 @@ export function BootSequence({ onDone, onReplay }: { onDone: () => void; onRepla
    * pass an inline arrow, so its identity changes on every render of the
    * console - and the console re-renders with every telemetry frame. Depending
    * on it meant this effect tore down and rebuilt its own timer several times a
-   * second, the timeout never reached 3600ms, and the card sat on top of the
+   * second, the timeout never reached its end, and the card sat on top of the
    * application forever swallowing every click.
    */
   const done = useRef(onDone)
@@ -156,7 +156,7 @@ export function BootSequence({ onDone, onReplay }: { onDone: () => void; onRepla
     const id = window.setTimeout(() => {
       setClosing(true)
       window.setTimeout(() => done.current(), 620)
-    }, 3600)
+    }, 1800)
     return () => window.clearTimeout(id)
   }, [armed, held])
 
@@ -178,6 +178,11 @@ export function BootSequence({ onDone, onReplay }: { onDone: () => void; onRepla
           initial={{ opacity: 1 }}
           exit={{ opacity: 0, filter: 'blur(6px)' }}
           transition={{ duration: 0.62, ease: [0.22, 1, 0.36, 1] }}
+          /* A fullscreen layer over the console takes every click while it is
+             up. Anywhere outside the card means "let me in" - without it the
+             console reads as unresponsive to anyone who does not spot the
+             button. */
+          onClick={enter}
         >
           <ApproachCanvas phase={index} />
 
@@ -192,6 +197,7 @@ export function BootSequence({ onDone, onReplay }: { onDone: () => void; onRepla
           */}
           <div
             className="boot__inner"
+            onClick={(e) => e.stopPropagation()}
             onPointerEnter={() => setHeld(true)}
             onPointerLeave={() => setHeld(false)}
             onKeyDown={() => setHeld(true)}
