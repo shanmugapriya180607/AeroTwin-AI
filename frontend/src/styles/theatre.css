@@ -301,3 +301,94 @@
   .theatre__copy { bottom: 112px; }
   .theatre__engine { top: 82px; width: 320px; }
 }
+
+/* ==========================================================================
+   First paint
+
+   Shown while the cinematic chunks stream in. It lives in the entry chunk and
+   imports nothing heavy, so it paints with the document rather than after the
+   renderer - the difference between a branded opening and an apparently blank
+   page on a cold load.
+   ========================================================================== */
+
+.splash {
+  position: fixed;
+  inset: 0;
+  z-index: 95;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(1200px 800px at 50% 10%, #ffffff 0%, rgba(255, 255, 255, 0) 60%),
+    linear-gradient(178deg, #f7fbff 0%, #eaf2fb 54%, #dfeaf7 100%);
+}
+
+.splash__inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  animation: splash-in 620ms var(--ease) both;
+}
+
+.splash__mark { color: var(--accent); }
+
+.splash__name {
+  font-family: var(--sans);
+  font-size: 26px;
+  font-weight: 200;
+  letter-spacing: 0.34em;
+  text-indent: 0.34em;
+  color: var(--ink);
+}
+
+.splash__sub {
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: 0.4em;
+  color: var(--ink-4);
+  font-weight: 600;
+  margin-top: -6px;
+}
+
+.splash__bar {
+  position: relative;
+  width: 168px;
+  height: 2px;
+  margin-top: 10px;
+  border-radius: 2px;
+  background: rgba(11, 26, 46, 0.08);
+  overflow: hidden;
+}
+
+/* An indeterminate sweep: the chunk gives no progress events, so a bar that
+   claimed a percentage would be inventing one. */
+.splash__bar-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 42%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  animation: splash-sweep 1.15s var(--ease-in-out) infinite;
+}
+
+.splash__label {
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: 0.32em;
+  color: var(--ink-3);
+  font-weight: 700;
+}
+
+@keyframes splash-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes splash-sweep {
+  0% { transform: translateX(-110%); }
+  100% { transform: translateX(280%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .splash__bar-fill { animation: none; width: 100%; }
+}
