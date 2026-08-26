@@ -7,7 +7,18 @@
  * generator - which labels itself DEMO wherever it appears.
  */
 
-const BASE = ''
+/**
+ * Where the backend is.
+ *
+ * Empty by default: the dev server proxies /api to the local backend, and in
+ * production the backend serves the built frontend itself, so same-origin is
+ * correct in both. Set VITE_API_BASE when the two are deployed apart - a static
+ * host such as Vercel serving the console against a backend hosted elsewhere.
+ *
+ * With no backend reachable at all, every call resolves to null and the store
+ * falls back to the local demo generator, which labels itself DEMO throughout.
+ */
+const BASE = (import.meta.env.VITE_API_BASE ?? '').replace(/\/$/, '')
 
 export class ApiError extends Error {
   constructor(public status: number, message: string) {

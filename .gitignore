@@ -1,6 +1,12 @@
 # dependencies
 node_modules/
 
+# There is no package at the repository root - the frontend owns its own
+# manifest. Running npx here regenerates an empty lockfile; it is an artefact,
+# not a dependency record.
+/package-lock.json
+/package.json
+
 # python
 __pycache__/
 *.py[cod]

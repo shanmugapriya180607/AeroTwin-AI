@@ -41,8 +41,17 @@ export class TopicSocket {
     if (this.socket && (this.socket.readyState === WebSocket.OPEN || this.socket.readyState === WebSocket.CONNECTING)) {
       return
     }
-    const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:'
-    const url = `${protocol}//${location.host}/ws/${this.topic}`
+    // Follow the REST base when the backend is deployed apart from the
+    // console, so the socket does not try to reach a static host that has no
+    // WebSocket endpoint to answer with.
+    const configured = (import.meta.env.VITE_API_BASE ?? '').replace(/\/$/, '')
+    const host = configured
+      ? configured.replace(/^https?:/, '')
+      : `//${location.host}`
+    const secure = configured
+      ? configured.startsWith('https:')
+      : location.protocol === 'https:'
+    const url = `${secure ? 'wss:' : 'ws:'}${host}/ws/${this.topic}`
     this.setState('CONNECTING')
 
     let socket: WebSocket

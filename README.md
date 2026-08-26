@@ -209,6 +209,7 @@ AEROTWIN/
 │   │   ├── styles/           design tokens and stylesheets
 │   │   └── types/
 │   ├── package.json
+│   ├── vercel.json           static-host deployment config
 │   └── vite.config.ts
 ├── start.ps1                 one-command launch (Windows)
 ├── start.sh                  one-command launch (POSIX)
@@ -280,6 +281,48 @@ The backend serves `frontend/dist` when it exists, so after building, the whole
 platform is available on `http://127.0.0.1:8011/` alone.
 
 API documentation: `http://127.0.0.1:8011/docs`
+
+---
+
+## Deployment
+
+The platform is two processes: a React frontend and a Python backend. A static
+host such as Vercel deploys the **frontend only**.
+
+### Vercel
+
+Set **Root Directory** to `frontend` in the project settings. Everything else is
+in [`frontend/vercel.json`](frontend/vercel.json) — framework preset, build
+command, output directory, and the rewrite that makes `/intro`, `/uav` and
+`/dashboard` resolve on direct navigation and on refresh. Without that rewrite
+those paths are React Router routes with no file behind them and return 404.
+
+### Backend
+
+Vercel's serverless functions do not support the WebSocket transport this
+platform streams telemetry over, so the backend belongs on a host that does —
+Render, Railway, Fly.io, or any container host. Point the frontend at it:
+
+```
+VITE_API_BASE=https://your-backend-host
+```
+
+Set as a Vercel environment variable and redeploy. The REST client and the
+WebSocket transport both follow it. Left unset, both use the same origin, which
+is correct for local development and for the single-host deployment where the
+backend serves the built frontend itself.
+
+### Frontend without a backend
+
+The console is built to stay demonstrable when the backend is unreachable: every
+call resolves to `null`, a watchdog starts the local demo generator, and `DEMO`
+appears on every value it produces. The 3D intro, the UAV showcase, telemetry,
+Expected vs Actual, residuals, anomalies, engine health and the narrated story
+all run.
+
+Screens that read the backend directly — Data & Models, Validation,
+Architecture — show their empty state instead, and the replay controls are
+inert. For a complete demonstration, host the backend and set `VITE_API_BASE`.
 
 ---
 
