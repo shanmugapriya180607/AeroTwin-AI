@@ -10,8 +10,6 @@ A physics model of the engine runs in lockstep with the engine itself. The
 difference between what physics expects and what the sensors report — the
 **residual** — is what everything downstream reads.
 
-> Research prototype. Not certified for airworthiness decisions.
-
 ---
 
 ## Problem Statement
