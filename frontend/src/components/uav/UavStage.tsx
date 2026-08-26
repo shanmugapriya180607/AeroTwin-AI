@@ -32,6 +32,9 @@ import { UavModel, type UavVisualState } from './UavModel'
 type Mode = 'FOLLOW' | 'CINEMATIC' | 'SIDE' | 'GROUND CONTROL' | 'INSPECTION'
 
 /** Offsets in the aircraft's local frame: [right, up, back]. */
+/** Kept between the camera and the ground, in world units (~60 m). */
+const GROUND_MARGIN = 0.24
+
 const CAMERA_OFFSETS: Record<Mode, { offset: THREE.Vector3; look: THREE.Vector3; fov: number }> = {
   FOLLOW: {
     offset: new THREE.Vector3(0, 0.75, -3.4),
@@ -161,6 +164,18 @@ function CameraRig({ dynamics, mode, fullscreen, transitionRef, base }: RigProps
       camera.position.x += Math.sin(t * 21) * shake.current
       camera.position.y += Math.cos(t * 17) * shake.current * 0.7
     }
+
+    /*
+     * Never below the ground.
+     *
+     * The framings are offsets from the aircraft, and near the airbase the
+     * aircraft is close to the surface - so a lateral offset puts the camera
+     * inside the terrain, which is a single-sided mesh and renders as a black
+     * mass filling the frame. Clamping here fixes every framing at once rather
+     * than hand-tuning each one.
+     */
+    const floor = terrainHeight(camera.position.x, camera.position.z) + GROUND_MARGIN
+    if (camera.position.y < floor) camera.position.y = floor
 
     smoothedLook.lerp(lookTarget, smoothing(5.0 + 4.0 * dive, dt))
     camera.lookAt(smoothedLook)
