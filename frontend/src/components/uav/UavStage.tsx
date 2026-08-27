@@ -42,14 +42,25 @@ const CAMERA_OFFSETS: Record<Mode, { offset: THREE.Vector3; look: THREE.Vector3;
     look: new THREE.Vector3(0, 0.1, 2.2),
     fov: 44,
   },
+  /*
+   * The two storytelling framings sit slightly *below* the aircraft and look
+   * slightly up.
+   *
+   * From above, the background behind the airframe is ground, and an aircraft
+   * against ground reads as taxiing however high the altimeter says it is -
+   * which is what the narrated demonstration looked like at 12,000 ft. From
+   * below, the background is sky and it reads as flying. The terrain clamp
+   * further down keeps the camera out of the surface near the airbase, so the
+   * low framing is safe at circuit height too.
+   */
   CINEMATIC: {
-    offset: new THREE.Vector3(2.1, 0.95, -4.6),
-    look: new THREE.Vector3(0, 0.05, 1.8),
+    offset: new THREE.Vector3(2.1, -0.28, -4.6),
+    look: new THREE.Vector3(0, 0.52, 1.8),
     fov: 36,
   },
   SIDE: {
-    offset: new THREE.Vector3(4.4, 0.35, 0.4),
-    look: new THREE.Vector3(0, 0, 0),
+    offset: new THREE.Vector3(4.4, -0.22, 0.4),
+    look: new THREE.Vector3(0, 0.4, 0),
     fov: 32,
   },
   'GROUND CONTROL': {
