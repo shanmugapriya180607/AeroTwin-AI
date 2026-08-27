@@ -356,7 +356,7 @@ API documentation: `http://127.0.0.1:8011/docs`
 
 ```bash
 cd frontend
-npm test          # 29 simulation-engine invariants (vitest)
+npm test          # 31 simulation-engine invariants (vitest)
 npx tsc -b        # type check
 npm run build     # production bundle
 ```
@@ -503,7 +503,7 @@ from the reduced model that runs in the browser when no backend answers — only
 the transport differs. That is what makes the controls work on a static
 deployment, where they previously did nothing at all.
 
-**Invariants under test.** `npm test` in `frontend/` runs 29 assertions against
+**Invariants under test.** `npm test` in `frontend/` runs 31 assertions against
 a fake scheduler, including: pressing `START` twice creates exactly one loop; a
 held simulation's index does not change across a hundred ticks; a live frame
 that arrives after `PAUSE` is dropped; `RESUME` does not re-prepare the source;

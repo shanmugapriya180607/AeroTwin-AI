@@ -1070,7 +1070,7 @@ cd ../frontend && npm install</code></pre>
 
 <h3>15.2 &nbsp;Simulation-engine invariants</h3>
 <p>
-  29 assertions run against a fake scheduler, so the properties are exact rather
+  31 assertions run against a fake scheduler, so the properties are exact rather
   than dependent on wall-clock timing. Among them:
 </p>
 
@@ -1085,6 +1085,7 @@ cd ../frontend && npm install</code></pre>
     <tr><td>Settle after pause</td><td>The held index becomes the sample the backend actually stopped on</td></tr>
     <tr><td>Adopt honestly</td><td>A backend already paused is adopted as paused, never as running</td></tr>
     <tr><td>Stale snapshots ignored</td><td>A status poll issued before PAUSE and answered after it cannot restart the clock; one issued after it still can</td></tr>
+    <tr><td>Held streams released</td><td>A ground station left paused by an earlier session is released when a console attaches, rather than opening onto a sortie where nothing moves</td></tr>
     <tr><td>End of source</td><td>Holds on the last real sample rather than wrapping silently</td></tr>
   </tbody>
 </table>

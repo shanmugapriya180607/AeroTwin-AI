@@ -203,6 +203,25 @@ export class SimulationEngine {
     }
   }
 
+  /**
+   * Release a backend that was left held.
+   *
+   * The ground station keeps its paused flag across console sessions, so a
+   * pause from an hour ago - or a STOP nobody resumed - leaves the next
+   * operator looking at a console where not one number moves. That is
+   * indistinguishable from a broken build.
+   *
+   * Opening the console is an intent to watch the sortie, so this releases it.
+   * The epoch bump matters: without it the status poll already in flight comes
+   * back saying `paused` and freezes it again.
+   */
+  async release(): Promise<void> {
+    this.epoch += 1
+    await this.transport?.resume()
+    if (this.snapshot.status !== 'running') this.patch({ status: 'running', error: null })
+    if (this.timer === null) this.startLoop()
+  }
+
   /** The length of the loaded sortie, once it is known. Zero means unknown,
    *  which disables the progress bar rather than inventing a denominator. */
   setTotalSteps(totalSteps: number): void {

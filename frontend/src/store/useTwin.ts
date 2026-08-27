@@ -121,6 +121,8 @@ interface TwinStore {
   /** Pull the frame the twin is holding at. Used after PAUSE and STEP, where
    *  no frame arrives over the socket by design. */
   syncHeldFrame: () => Promise<void>
+  /** Release a backend left held by an earlier session. */
+  releaseIfHeld: () => Promise<void>
   stopSim: () => Promise<void>
   resetSim: () => Promise<void>
   stepSim: () => Promise<void>
@@ -261,13 +263,13 @@ export const useTwin = create<TwinStore>((set, get) => ({
         graceTimer = null
       }
       simulation.attach(live)
-      simulation.adopt(
-        Number(get().mission?.mission?.duration_s) || 0,
-        // A console that opens onto a backend someone else paused must show
-        // it as paused, not as a running simulation whose numbers never move.
-        !!get().status?.paused,
-      )
+      simulation.adopt(Number(get().mission?.mission?.duration_s) || 0)
       set({ mode: 'LIVE' })
+      // The ground station keeps its paused flag between console sessions, so
+      // a pause left over from an earlier one would open this console onto a
+      // sortie where nothing moves. Opening it is an intent to watch, so a
+      // held stream is released rather than presented frozen.
+      void get().releaseIfHeld()
     }
 
     /** No backend. Hand the seat to the in-browser model so the console is
@@ -397,6 +399,13 @@ export const useTwin = create<TwinStore>((set, get) => ({
     // The backend advanced one sample while held, so the websocket will not
     // push. Pull the frame the step produced.
     if (simulation.transportKind === 'LIVE') await get().syncHeldFrame()
+  },
+
+  releaseIfHeld: async () => {
+    const status = await api.systemStatus()
+    if (!status?.paused) return
+    await simulation.release()
+    await get().refreshStatus()
   },
 
   syncHeldFrame: async () => {

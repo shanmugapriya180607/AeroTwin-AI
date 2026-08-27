@@ -397,6 +397,37 @@ describe('SimulationEngine - start-up and failure', () => {
     expect(engine.clock.t).toBe(2000)
   })
 
+  it('releases a backend an earlier session left held', async () => {
+    // The regression this pins: the ground station keeps its paused flag
+    // between console sessions, so a stale pause opened the console onto a
+    // sortie where not one number moved.
+    const sched = fakeScheduler()
+    const engine = new SimulationEngine(sched.scheduler)
+    const transport = fakeTransport('LIVE')
+    engine.attach(transport)
+    engine.adopt(4550, true)
+    expect(engine.getState().status).toBe('paused')
+
+    await engine.release()
+
+    expect(engine.getState().status).toBe('running')
+    expect(transport.calls).toContain('resume')
+    expect(engine.observeFrame(120)).toBe(true)
+  })
+
+  it('a status poll from before the release cannot re-freeze it', async () => {
+    const sched = fakeScheduler()
+    const engine = new SimulationEngine(sched.scheduler)
+    engine.attach(fakeTransport('LIVE'))
+    engine.adopt(4550, true)
+
+    const stale = engine.commandEpoch
+    await engine.release()
+    engine.reconcile(true, stale)
+
+    expect(engine.getState().status).toBe('running')
+  })
+
   it('adopt() takes over a stream already flowing, but never interrupts', async () => {
     const sched = fakeScheduler()
     const engine = new SimulationEngine(sched.scheduler)
