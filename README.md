@@ -134,6 +134,24 @@ Twin workflow and the full demonstration run out of the box. They are
 **synthetic**, and every value they produce is badged `DEMO` in the UI, in every
 API response and in every export.
 
+### Team corpus
+
+The engine-telemetry corpus produced by the team's data workstream
+(`MONISHA-tech316/aerotwin-person1`) ships at
+[`data/team_corpus/`](data/team_corpus/) — 4,200 rows at 1 Hz across a normal
+regime, a degradation ramp and four injected fault modes, with the generator's
+own `state` / `fault` columns as ground truth.
+
+It is **generated, not measured** — its own generator adds Gaussian noise to
+fixed baselines — so it is tagged `SIMULATED` everywhere and its labels are
+described as generator labels, never as maintenance findings.
+
+The **Dataset** screen shows what is in it, counted off the filesystem on every
+load: files, rows, valid rows, blank fields, sampling rate, label distribution,
+the channel mapping with its unit conversions, and the channels it does *not*
+carry. Press `REPLAY` on any file to put it on the live seat and watch the twin
+run against it.
+
 ### REAL data
 
 Point `AEROTWIN_NGAFID_DIR` at a directory of NGAFID-MC (Zenodo 6624956,
@@ -148,6 +166,39 @@ Parquet requires `pyarrow` or `fastparquet`; CSV requires nothing. Parquet is
 reported `OPTIONAL` unless Parquet files are actually present.
 
 **The repository contains no proprietary, operational or classified data.**
+
+---
+
+## Model Envelope and Abstention
+
+The twin's expectation comes from a model calibrated for a 180 hp, 2,700 rpm,
+four-cylinder air-cooled aero engine. Hand it a corpus recorded from a
+different machine and every residual is enormous — not because anything is
+wrong with that engine, but because the model was not built for it.
+
+Reporting a failing engine from that would be the worst thing this system could
+do, so it checks first
+([`analytics/envelope.py`](backend/app/analytics/envelope.py)):
+
+| Verdict | Meaning | Behaviour |
+|---|---|---|
+| `IN ENVELOPE` | the model applies | diagnose normally |
+| `REDUCED` | model applies, instrumentation incomplete | diagnose what is covered, name what is not |
+| `OUT OF ENVELOPE` | operating point outside calibration | **abstain** — no health verdict, no anomalies, no advisory |
+
+On abstention `health_index` is returned as `null`, not `0`, and the gauge
+draws a dash. Absolute threshold alerts still fire: a redline is a redline
+whatever model is running.
+
+Replaying the team corpus is a live demonstration of this. It runs at 4,800 rpm
+and carries one bulk temperature rather than eight cylinder thermocouples, so
+the twin reports:
+
+> **MODEL ABSTENTION** — Crankshaft speed 4,726 rpm is above the model's
+> calibrated ceiling of 3,105 rpm (Lycoming IO-360 class, rated 2,700 rpm).
+> This is a different class of engine.
+> No per-cylinder instrumentation in this source: cylinder-level localisation
+> is unavailable. Bulk channels only.
 
 ---
 
@@ -183,28 +234,34 @@ as **asymmetry** between the four channels, not as a change in the average.
 AEROTWIN/
 ├── backend/
 │   ├── app/
-│   │   ├── analytics/        residual detection, calibration, explanation
+│   │   ├── analytics/        residual detection, calibration, explanation,
+│   │   │                     model-envelope check and abstention
 │   │   ├── api/              REST routes
 │   │   ├── core/             channel registry, constants, event log
 │   │   ├── mission/          mission profiles, route, simulator
 │   │   ├── ml/               Isolation Forest, features, ingest, prediction
 │   │   ├── physics/          piston engine thermodynamic model
-│   │   ├── sources/          swappable data adapters (corpus, synthetic, CAN)
+│   │   ├── sources/          swappable data adapters — NGAFID replay,
+│   │   │                     team corpus, demo simulator, SocketCAN
 │   │   ├── store/            flight history
 │   │   ├── twin/             twin runtime — the lockstep loop
 │   │   ├── ws/               WebSocket hub
 │   │   ├── main.py           FastAPI app
 │   │   └── service.py        orchestration
 │   ├── sample_corpus/        single-flight format sample
+│   ├── tools/                build-time dataset report export
 │   └── requirements.txt
 ├── data/
-│   └── demo/flights/         synthetic demo corpus (CSV)
+│   ├── demo/flights/         synthetic demo corpus (CSV)
+│   └── team_corpus/          team engine-telemetry corpus (CSV, SIMULATED)
 ├── frontend/
 │   ├── public/
+│   │   └── dataset-report.json   build-time corpus count, for static hosts
 │   ├── src/
 │   │   ├── components/       3D stages, charts, intro, demo theatre, UI
-│   │   ├── pages/            the twelve console screens
-│   │   ├── services/         API client, WebSocket, demo feed
+│   │   ├── pages/            the console screens
+│   │   ├── services/         API client, WebSocket, local demo model
+│   │   ├── simulation/       the authoritative clock and its two transports
 │   │   ├── store/            Zustand store
 │   │   ├── styles/           design tokens and stylesheets
 │   │   └── types/
@@ -221,8 +278,8 @@ AEROTWIN/
 ## Installation
 
 ```bash
-git clone https://github.com/shanmugapriya180607/Aerotwin.git
-cd Aerotwin
+git clone https://github.com/shanmugapriya180607/AeroTwin-AI.git
+cd AeroTwin-AI
 ```
 
 **Backend**
@@ -284,6 +341,21 @@ API documentation: `http://127.0.0.1:8011/docs`
 
 ---
 
+## Testing
+
+```bash
+cd frontend
+npm test          # 27 simulation-engine invariants (vitest)
+npx tsc -b        # type check
+npm run build     # production bundle
+```
+
+The simulation engine takes no DOM dependency beyond an injectable scheduler,
+so its invariants are asserted exactly rather than by waiting on wall-clock
+time.
+
+---
+
 ## Deployment
 
 The platform is two processes: a React frontend and a Python backend. A static
@@ -314,15 +386,29 @@ backend serves the built frontend itself.
 
 ### Frontend without a backend
 
-The console is built to stay demonstrable when the backend is unreachable: every
-call resolves to `null`, a watchdog starts the local demo generator, and `DEMO`
+The console is built to stay demonstrable when the backend is unreachable:
+every call resolves to `null`, the local transport takes the seat, and `DEMO`
 appears on every value it produces. The 3D intro, the UAV showcase, telemetry,
-Expected vs Actual, residuals, anomalies, engine health and the narrated story
-all run.
+Expected vs Actual, residuals, anomalies, engine health, the narrated story
+**and the full replay controls** — start, pause, resume, step, stop, reset,
+speed — all run.
+
+The **Dataset** screen also works, from a report generated at build time by the
+same code the API serves:
+
+```bash
+cd backend
+python -m tools.export_dataset_report   # writes frontend/public/dataset-report.json
+```
+
+The figures are identical because they come from the same function over the same
+files; only *when* they were counted differs, and the page says `BUILD SNAPSHOT`
+rather than passing it off as a live inspection. Replaying a corpus file through
+the twin still needs the backend, and that button says so.
 
 Screens that read the backend directly — Data & Models, Validation,
-Architecture — show their empty state instead, and the replay controls are
-inert. For a complete demonstration, host the backend and set `VITE_API_BASE`.
+Architecture — show their empty state instead. For a complete demonstration,
+host the backend and set `VITE_API_BASE`.
 
 ---
 
@@ -350,7 +436,44 @@ inert. For a complete demonstration, host the backend and set `VITE_API_BASE`.
 | `/dashboard` | Command Center and the eleven other console screens |
 
 `RUN STORY` plays the whole chain full screen over the aircraft in about ninety
-seconds, with the engine assembly in frame and every number read live.
+seconds, with the engine assembly in frame and every number read live. It reads
+the sortie already in progress rather than rewinding it, so the aircraft is at
+altitude and the deviation is already developing when the narration reaches it.
+
+---
+
+## Simulation Control
+
+Everything that moves because the *simulation* is moving — telemetry, charts,
+the residual, the twin, the UAV's mission track, the pistons, the airflow
+particles, the narration — derives from one clock
+([`frontend/src/simulation/`](frontend/src/simulation/)). Nothing else in the
+console owns a timer that advances simulation state.
+
+| Control | Behaviour |
+|---|---|
+| `START` | full start-up: dataset → simulation → twin → AI → telemetry, each stage named on screen |
+| `PAUSE` | the clock, the index, the charts, the twin, the pistons and the aircraft all hold on the same sample |
+| `RESUME` | continues from exactly that timestep — never restarts, never skips |
+| `STEP` | advances exactly one 1 Hz sample, then holds again |
+| `STOP` | ends the sortie; everything computed stays inspectable |
+| `RESET` | rewinds and clears every derived quantity — no residual baseline carried over |
+| `1× … 200×` | replay rate; changing it never resumes a held simulation and never spawns a second loop |
+
+The offered buttons are derived from the simulation status, so `PAUSE` is never
+offered on an already-held simulation and `STEP` is never offered on a running
+one.
+
+The state machine is identical whether frames come from the ground station or
+from the reduced model that runs in the browser when no backend answers — only
+the transport differs. That is what makes the controls work on a static
+deployment, where they previously did nothing at all.
+
+**Invariants under test.** `npm test` in `frontend/` runs 27 assertions against
+a fake scheduler, including: pressing `START` twice creates exactly one loop; a
+held simulation's index does not change across a hundred ticks; a live frame
+that arrives after `PAUSE` is dropped; `RESUME` does not re-prepare the source;
+`STEP` advances exactly one sample and leaves the simulation held.
 
 ---
 

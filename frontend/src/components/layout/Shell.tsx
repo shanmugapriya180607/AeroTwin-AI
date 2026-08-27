@@ -1,7 +1,7 @@
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import {
   Activity, AlertTriangle, Boxes, Cpu, Database, GaugeCircle, LayoutGrid,
-  LineChart, Map, Plane, PlayCircle, RotateCcw, ShieldCheck, Wrench,
+  FolderSearch, LineChart, Map, Plane, PlayCircle, RotateCcw, ShieldCheck, Wrench,
 } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useTwin } from '../../store/useTwin'
@@ -34,6 +34,7 @@ export const NAV: Array<NavLinkItem | NavSeparator> = [
   { sep: true },
   { to: '/architecture', label: 'ARCHITECTURE', icon: Boxes },
   { to: '/data', label: 'DATA & MODELS', icon: Database },
+  { to: '/dataset', label: 'DATASET', icon: FolderSearch },
   { to: '/validation', label: 'VALIDATION', icon: ShieldCheck },
 ]
 

@@ -41,6 +41,14 @@ data/demo/*
 data/demo/flights/*
 !data/demo/flights/*.csv
 !data/demo/flights/*.md
+
+# The team engine-telemetry corpus is small (390 KB) and ships, so the Dataset
+# screen and the adapter path both work out of a fresh clone.
+!data/team_corpus/
+data/team_corpus/*
+!data/team_corpus/*.csv
+!data/team_corpus/*.md
+
 *.parquet
 
 # editors and tooling

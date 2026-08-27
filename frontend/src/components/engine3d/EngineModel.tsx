@@ -14,6 +14,7 @@
 import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
+import { simClock } from '../../simulation'
 
 export type EngineViewMode = 'PHYSICAL' | 'THERMAL' | 'AIRFLOW' | 'DIAGNOSTIC' | 'TWIN'
 
@@ -40,6 +41,15 @@ export interface EngineVisualState {
   mode: EngineViewMode
   /** 0-1, fades the assembly in during the intro. */
   reveal: number
+  /**
+   * Accumulated crank angle in radians.
+   *
+   * Integrated once per frame from RPM by the root, and only while the
+   * simulation clock is running. The assembly used to read the renderer's
+   * wall clock, which meant the pistons kept turning through a paused
+   * simulation - an engine animating against frozen telemetry.
+   */
+  crank: number
 }
 
 export const NEUTRAL_CYLINDER: EngineCylinderState = {
@@ -54,6 +64,7 @@ export function emptyEngineState(): EngineVisualState {
     anomalyIndex: 0,
     mode: 'PHYSICAL',
     reveal: 1,
+    crank: 0,
   }
 }
 
@@ -155,9 +166,9 @@ function Cylinder({
     const s = state.current
     const cyl = s.cylinders[slot.index - 1] ?? NEUTRAL_CYLINDER
     const t = clock.clock.elapsedTime
-    // Visual crank rate, geared well down from the real 2,400 rpm: at true
-    // speed the assembly strobes at 60 fps and communicates nothing.
-    const crank = t * (s.rpm / 2400) * 5.2 + slot.phase
+    // The integrated crank angle, not the wall clock: the assembly turns
+    // because the simulation is turning it.
+    const crank = s.crank + slot.phase
 
     // The piston reciprocates along the cylinder axis, the rod follows it.
     const travel = (Math.cos(crank) * 0.5 + 0.5) * STROKE
@@ -313,7 +324,7 @@ function CrankTrain({
   const ref = useRef<THREE.Group>(null)
   useFrame((clock) => {
     if (ref.current) {
-      ref.current.rotation.z = clock.clock.elapsedTime * (state.current.rpm / 2400) * 5.2
+      ref.current.rotation.z = state.current.crank
     }
   })
 
@@ -372,7 +383,9 @@ function CoolingAirflow({ state }: { state: React.MutableRefObject<EngineVisualS
     if (material.opacity < 0.012) return
 
     const attribute = geometry.attributes.position as THREE.BufferAttribute
-    const speed = 0.5 + 0.5 * s.power
+    // Cooling airflow is a simulated quantity, not decoration: it stops when
+    // the simulation stops, along with everything else it is derived from.
+    const speed = simClock.running ? 0.5 + 0.5 * s.power : 0
     for (let i = 0; i < COUNT; i += 1) {
       let p = seeds[i * 3] + Math.min(0.08, delta) * speed * (0.6 + (i % 7) / 12)
       if (p > 1) p -= 1
@@ -405,10 +418,20 @@ export function EngineModel({
   useFrame((_, delta) => {
     const s = state.current
     if (!root.current) return
+
+    // The mechanical clock for the whole assembly. Geared well down from the
+    // real 2,400 rpm - at true speed it strobes at 60 fps and communicates
+    // nothing - and held whenever the simulation is held, so the pistons and
+    // the telemetry can never disagree about whether the engine is running.
+    if (simClock.running) {
+      s.crank += Math.min(0.1, delta) * (s.rpm / 2400) * 5.2
+    }
+
     // Running vibration, amplitude from engine speed. Deliberately small:
-    // this is an engine on its mounts, not a shaking prop.
+    // this is an engine on its mounts, not a shaking prop. It stops with the
+    // engine.
     const t = performance.now() / 1000
-    const amp = 0.0022 * (s.rpm / 2400)
+    const amp = simClock.running ? 0.0022 * (s.rpm / 2400) : 0
     root.current.position.y = Math.sin(t * 31) * amp
     root.current.position.x = Math.cos(t * 27) * amp * 0.6
     const reveal = Math.max(0, Math.min(1, s.reveal))

@@ -75,7 +75,21 @@ export interface Prognosis {
 
 export interface EngineSummary {
   engine_id: string
-  health_index: number
+  /** Null when the twin has abstained: the model does not apply to the
+   *  connected source, so there is no health verdict to report. */
+  health_index: number | null
+  health_valid?: boolean
+  envelope?: {
+    state: string
+    diagnosis_permitted: boolean
+    localisation_permitted: boolean
+    health_valid: boolean
+    reasons: string[]
+    summary: string
+    coverage: { present: number; total: number; pct: number; missing: string[]; cylinder_channels: number }
+    limits: Array<{ quantity: string; value: number; min: number; max: number; within: boolean }>
+    model: Record<string, unknown>
+  }
   status: EngineState
   reason: string
   confidence: number | null

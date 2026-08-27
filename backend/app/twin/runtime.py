@@ -24,6 +24,7 @@ import time
 from collections import deque
 from dataclasses import dataclass, field
 
+from ..analytics.envelope import envelope_status
 from ..analytics.advisory import Advisory, build_advisories
 from ..analytics.anomaly import Anomaly, AnomalyDetector, regime_key, threshold_alerts
 from ..analytics.health import (CylinderHealth, cylinder_health, engine_health_index,
@@ -170,6 +171,14 @@ class TwinRuntime:
         self.learned_enabled = False
         self._learned_countdown = 0
         self._learned_cache: dict[str, dict] = {}
+        # Whether the connected source is something this model was calibrated
+        # for. Recomputed every analytics pass, because the source can change
+        # under the twin while it is running.
+        self.envelope: dict = {
+            "state": "IN ENVELOPE", "diagnosis_permitted": True,
+            "localisation_permitted": True, "health_valid": True,
+            "reasons": [], "summary": "", "coverage": {}, "limits": [], "model": {},
+        }
 
     # -- one lockstep step --------------------------------------------------
 
@@ -262,10 +271,28 @@ class TwinRuntime:
         trim_div = self.estimator.trim_divergence()
         egt_div = self.estimator.egt_trim_divergence()
 
+        # Before anything is diagnosed: is this source one the physics model
+        # was calibrated for? A residual computed against a model built for a
+        # different engine is a model-mismatch residual, and reporting it as a
+        # fault would be the worst thing this system could do.
+        self.envelope = envelope_status(self.current.channels, self.current.inputs)
+
         self.cylinders = cylinder_health(residuals, trim_div)
         self.threshold = threshold_alerts(self.current.channels)
         self.health_index = engine_health_index(self.cylinders, global_health(residuals))
         has_critical = any(a["level"] == "CRITICAL" for a in self.threshold)
+
+        if not self.envelope["diagnosis_permitted"]:
+            # Abstain, loudly and with the reason. No health verdict, no
+            # anomalies, no advisory - and the threshold alerts stay, because an
+            # absolute limit is an absolute limit whatever model is running.
+            self.engine_state_label = "MODEL ABSTENTION"
+            self.engine_state_reason = self.envelope["summary"]
+            self.anomalies = []
+            self.advisories = []
+            self.prognosis = None
+            return
+
         self.engine_state_label, self.engine_state_reason = engine_status(
             self.health_index, has_critical
         )
@@ -419,6 +446,40 @@ class TwinRuntime:
         self.samples = 0
         self.residuals.reset_cusum()
         return record
+
+    def reset_run(self) -> None:
+        """Discard everything learned from the current sortie.
+
+        RESET has to leave the twin genuinely cold, or the next run starts with
+        the previous run's residual baseline and CUSUM already loaded and the
+        anomaly reappears before any evidence for it exists. The detector's
+        *trained* state is deliberately kept - it is a model of normality built
+        over the whole corpus, not of this sortie.
+        """
+        self.residuals = ResidualEngine(RESIDUAL_CHANNELS)
+        self.estimator = StateEstimator()
+        self.expected_lag.reset()
+        self.adapted_lag.reset()
+        self.buffer.clear()
+        self.current = None
+        self.cylinders = []
+        self.anomalies = []
+        self.advisories = []
+        self.prognosis = None
+        self.threshold = []
+        self.health_index = 100.0
+        self.engine_state_label = "NORMAL"
+        self.engine_state_reason = "Awaiting telemetry"
+        self.sync_pct = 0.0
+        self.samples = 0
+        self._post_lock_samples = 0
+        self._scales_frozen = False
+        self._sync_ewma = None
+        self.flight_series = []
+        self.last_sync_wall = "-"
+        self._learned_cache = {}
+        self._learned_countdown = 0
+        self.envelope = envelope_status({}, {})
 
     # -- reporting ----------------------------------------------------------
 

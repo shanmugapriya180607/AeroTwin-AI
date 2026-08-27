@@ -211,9 +211,20 @@ export function CylinderChart({
 
 /* --------------------------------------------------------- Health gauge -- */
 
-export function HealthGauge({ value, height = 200 }: { value: number; height?: number }) {
+/**
+ * The engine health index.
+ *
+ * `value` may be null, and that is not the same as zero. The twin abstains
+ * where its physics model does not apply to the connected source, and a gauge
+ * reading 0.0 in that state would be a fabricated verdict on an engine nothing
+ * has actually been concluded about. Abstention draws an empty arc and a dash.
+ */
+export function HealthGauge({ value, height = 200 }: { value: number | null; height?: number }) {
   const option = useMemo(() => {
-    const color = value >= 90 ? C.ok : value >= 78 ? C.caution : value >= 62 ? C.warn : C.crit
+    const abstained = value === null || value === undefined || !Number.isFinite(value)
+    const v = abstained ? 0 : (value as number)
+    const color = abstained ? '#b2c1d3'
+      : v >= 90 ? C.ok : v >= 78 ? C.caution : v >= 62 ? C.warn : C.crit
     return {
       backgroundColor: 'transparent',
       series: [
@@ -245,10 +256,13 @@ export function HealthGauge({ value, height = 200 }: { value: number; height?: n
             fontSize: 34,
             fontWeight: 500,
             fontFamily: 'JetBrains Mono, monospace',
-            color: '#0b1a2e',
-            formatter: (v: number) => v.toFixed(1),
+            color: abstained ? '#8496ac' : '#0b1a2e',
+            formatter: () => (abstained ? '—' : v.toFixed(1)),
           },
-          data: [{ value, name: 'ENGINE HEALTH INDEX' }],
+          data: [{
+            value: v,
+            name: abstained ? 'MODEL ABSTENTION' : 'ENGINE HEALTH INDEX',
+          }],
         },
       ],
     }

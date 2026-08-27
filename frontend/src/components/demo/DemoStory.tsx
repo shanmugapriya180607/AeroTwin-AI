@@ -23,8 +23,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Pause, Play, SkipForward, X } from 'lucide-react'
-import { api } from '../../services/api'
 import { useTwin } from '../../store/useTwin'
+import { simulation, useSimRunning } from '../../simulation'
 import { EngineStage } from '../engine3d/EngineStage'
 import type { EngineViewMode } from '../engine3d/EngineModel'
 import { Wordmark } from '../brand/Wordmark'
@@ -177,6 +177,11 @@ export function DemoStory() {
   const exitMission = useTwin((s) => s.exitMission)
   const mode = useTwin((s) => s.mode)
 
+  /* The narration holds whenever the simulation does. The story is a reading
+     of the run, so it cannot be allowed to narrate past a paused clock. */
+  const simRunning = useSimRunning()
+  const pauseSim = useTwin((s) => s.pauseSim)
+  const resumeSim = useTwin((s) => s.resumeSim)
   const [paused, setPaused] = useState(false)
   const [beatElapsed, setBeatElapsed] = useState(0)
   const [evidence, setEvidence] = useState<string | null>(null)
@@ -184,6 +189,16 @@ export function DemoStory() {
 
   const running = storyStep >= 0
   const beat = running ? BEATS[Math.min(storyStep, BEATS.length - 1)] : null
+
+  /* One control, both clocks: pausing the narration pauses the simulation it
+     is narrating, so the evidence on screen stays the evidence being read. */
+  const togglePause = useCallback(() => {
+    setPaused((p) => {
+      if (p) void resumeSim()
+      else pauseSim()
+      return !p
+    })
+  }, [pauseSim, resumeSim])
 
   const stop = useCallback(() => {
     setStoryStep(-1)
@@ -207,7 +222,7 @@ export function DemoStory() {
   /* The beat clock. Evidence is sampled four times a second rather than every
      frame - it is a readout, not an animation. */
   useEffect(() => {
-    if (!running || paused) return
+    if (!running || paused || !simRunning) return
     const id = window.setInterval(() => {
       timer.current += 0.25
       setBeatElapsed(timer.current)
@@ -216,7 +231,7 @@ export function DemoStory() {
       if (current && timer.current >= current.seconds) advance()
     }, 250)
     return () => window.clearInterval(id)
-  }, [running, paused, storyStep, advance])
+  }, [running, paused, simRunning, storyStep, advance])
 
   /* The camera moves with the narration, and the console behind the theatre
      follows too - so closing the story lands the operator on the screen the
@@ -235,13 +250,13 @@ export function DemoStory() {
       if (e.key === 'Escape') stop()
       if (e.key === ' ') {
         e.preventDefault()
-        setPaused((p) => !p)
+        togglePause()
       }
       if (e.key === 'ArrowRight') advance()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [running, stop, advance])
+  }, [running, stop, advance, togglePause])
 
   if (!running || !beat) return null
 
@@ -344,7 +359,7 @@ export function DemoStory() {
           <div className="theatre__controls">
             <button
               className="theatre__btn"
-              onClick={() => setPaused((p) => !p)}
+              onClick={togglePause}
               title={paused ? 'Resume (space)' : 'Pause (space)'}
             >
               {paused ? <Play size={13} /> : <Pause size={13} />}
@@ -380,12 +395,20 @@ export function DemoStory() {
  */
 export async function launchStory() {
   const state = useTwin.getState()
-  if (state.mode !== 'DEMO' && !state.demoRunning) {
-    // Best effort: if the backend is not reachable the local feed is already
-    // ramping the same fault, and the narration reads that instead.
-    await api.startDemo().catch(() => null)
-    await state.refreshStatus().catch(() => null)
+  const status = simulation.getState().status
+
+  // Only start something that is not already running.
+  //
+  // Restarting unconditionally rewinds the sortie to t=0, and the story then
+  // opens on an aircraft that has just left the runway at 900 ft over grass,
+  // narrating a developing fault that has not begun yet. The narration is a
+  // reading of the run in progress; where one is in progress, it reads that.
+  if (status === 'paused') {
+    await state.resumeSim().catch(() => null)
+  } else if (status !== 'running') {
+    await state.startDemo().catch(() => null)
   }
+
   // The aircraft goes fullscreen first; the transition is part of the opening.
   useTwin.getState().enterMission()
   useTwin.getState().setStoryStep(0)

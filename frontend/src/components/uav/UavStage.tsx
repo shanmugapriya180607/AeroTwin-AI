@@ -15,6 +15,7 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
+import { simClock } from '../../simulation'
 import { useTwin } from '../../store/useTwin'
 import { RenderBoundary } from '../ui/Boundary'
 import { StageFallback } from './StageFallback'
@@ -269,6 +270,9 @@ function Contrail({ dynamics }: { dynamics: FlightDynamics }) {
   const accumulator = useRef(0)
 
   useFrame((_, delta) => {
+    // The track is a record of where the simulation has flown, so it stops
+    // extending when the simulation stops.
+    if (!simClock.running) return
     accumulator.current += delta
     if (accumulator.current < 0.09) return
     accumulator.current = 0
@@ -333,7 +337,12 @@ function Scene({
   useFrame((_, delta) => {
     // Clamped so a stalled tab cannot integrate a huge step, but generous
     // enough that a software renderer still tracks the commanded state.
-    const dt = Math.min(0.1, delta)
+    //
+    // Held to zero whenever the simulation is held: the aircraft's position is
+    // a simulated quantity like any other, and an aeroplane still flying its
+    // route over frozen telemetry is the same lie as a turning propeller.
+    const dt = simClock.running ? Math.min(0.1, delta) : 0
+    if (dt === 0) return
 
     // Command altitude and speed from the twin's live telemetry, falling back
     // to the leg's planned figures when no frame has arrived yet.
@@ -356,6 +365,7 @@ function Scene({
     }
 
     visual.current.rpm = telemetry?.tick.channels?.rpm ?? mission?.rpm ?? 2200
+    visual.current.frozen = !simClock.running
     visual.current.bank = state.bank
     visual.current.pitch = state.pitch
     visual.current.airborne = Math.min(1, Math.max(0, (state.altitudeFt - 200) / 800))

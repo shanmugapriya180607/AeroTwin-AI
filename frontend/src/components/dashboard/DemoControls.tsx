@@ -1,87 +1,158 @@
 /**
  * Replay and demonstration controls.
  *
- * START DEMO drives the backend's scripted sortie: the engine begins healthy,
- * conditions change, the actual state drifts away from the physics
- * expectation, the residual grows, the detector activates, the explanation and
- * the advisory follow. The aircraft never crashes - the story is early
- * detection, not failure.
+ * Every button here goes through the simulation engine, never straight at the
+ * backend. That is what makes them work with no backend at all: the engine
+ * swaps the transport underneath and the control surface does not change.
+ *
+ * The button *set* is derived from the simulation status rather than written
+ * out by hand, so PAUSE is never offered on an already-held simulation and
+ * STEP is never offered on a running one.
  */
 
 import { useState } from 'react'
-import { Clapperboard, Gauge, Pause, Play, Radio, Sparkles } from 'lucide-react'
+import {
+  Clapperboard, Pause, Play, RotateCcw, Radio, Sparkles, SkipForward, Square,
+} from 'lucide-react'
 import { api } from '../../services/api'
 import { useTwin } from '../../store/useTwin'
+import { controlsFor, useSimulation } from '../../simulation'
 import { launchStory } from '../demo/DemoStory'
 
+/** The offered replay rates. The backend's demonstration rate is one of them,
+ *  so the active chip always reflects what the clock is actually doing. */
 const SPEEDS = [1, 20, 60, 200]
 
 export function DemoControls() {
   const status = useTwin((s) => s.status)
+  const sim = useSimulation()
+  const startDemo = useTwin((s) => s.startDemo)
+  const pauseSim = useTwin((s) => s.pauseSim)
+  const resumeSim = useTwin((s) => s.resumeSim)
+  const stopSim = useTwin((s) => s.stopSim)
+  const resetSim = useTwin((s) => s.resetSim)
+  const stepSim = useTwin((s) => s.stepSim)
+  const setSpeed = useTwin((s) => s.setSpeed)
   const refreshStatus = useTwin((s) => s.refreshStatus)
-  const demoRunning = useTwin((s) => s.demoRunning)
-  const toggleDemo = useTwin((s) => s.toggleDemo)
-  const mode = useTwin((s) => s.mode)
   const storyRunning = useTwin((s) => s.storyStep) >= 0
   const setStoryStep = useTwin((s) => s.setStoryStep)
   const [busy, setBusy] = useState(false)
 
-  const paused = status?.paused ?? false
-  const scale = status?.time_scale ?? 20
-  const disabled = mode === 'DEMO'
+  const can = controlsFor(sim.status)
+  const held = busy || can.busy
 
-  const run = async (fn: () => Promise<unknown>) => {
+  const run = async (fn: () => Promise<unknown> | unknown) => {
     setBusy(true)
-    await fn()
-    await refreshStatus()
-    setBusy(false)
+    try {
+      await fn()
+    } finally {
+      setBusy(false)
+    }
   }
+
+  /** START on a cold simulation, RESTART on a stopped one, REPLAY on a
+   *  finished one - the same command, named for what it does from here. */
+  const startLabel =
+    sim.status === 'stopped' ? 'Restart'
+      : sim.status === 'completed' ? 'Replay'
+        : sim.status === 'error' ? 'Retry' : 'Start demo'
 
   return (
     <div className="row row--tight">
-      <div className="btn-group" title={disabled ? 'Backend unavailable - replay rate is fixed in demo mode' : 'Replay rate'}>
+      <div className="btn-group" title="Replay rate">
         {SPEEDS.map((s) => (
           <button
             key={s}
-            className={`btn btn--sm ${Math.round(scale) === s ? 'btn--active' : ''}`}
-            disabled={busy || disabled}
-            onClick={() => run(() => api.setSpeed(s))}
+            className={`btn btn--sm ${Math.round(sim.speed) === s ? 'btn--active' : ''}`}
+            disabled={held}
+            onClick={() => run(() => setSpeed(s))}
           >
             {s}×
           </button>
         ))}
       </div>
 
-      <button
-        className="btn btn--icon"
-        disabled={busy || disabled}
-        title={paused ? 'Resume replay' : 'Pause replay'}
-        onClick={() => run(() => (paused ? api.resume() : api.pause()))}
-      >
-        {paused ? <Play size={14} /> : <Pause size={14} />}
-      </button>
+      {can.canPause && (
+        <button
+          className="btn btn--icon"
+          disabled={held}
+          title="Pause - the clock, the charts, the twin and the engine all hold"
+          onClick={() => run(pauseSim)}
+        >
+          <Pause size={14} />
+        </button>
+      )}
+
+      {can.canResume && (
+        <button
+          className="btn btn--icon btn--primary"
+          disabled={held}
+          title="Resume from the same timestep"
+          onClick={() => run(resumeSim)}
+        >
+          <Play size={14} />
+        </button>
+      )}
+
+      {can.canStep && (
+        <button
+          className="btn btn--icon"
+          disabled={held}
+          title="Advance exactly one 1 Hz timestep, then hold"
+          onClick={() => run(stepSim)}
+        >
+          <SkipForward size={14} />
+        </button>
+      )}
+
+      {can.canStop && (
+        <button
+          className="btn btn--icon"
+          disabled={held}
+          title="Stop the sortie - state is kept for inspection"
+          onClick={() => run(stopSim)}
+        >
+          <Square size={13} />
+        </button>
+      )}
+
+      {can.canReset && (
+        <button
+          className="btn btn--icon"
+          disabled={held}
+          title="Reset - rewind and clear every derived quantity"
+          onClick={() => run(resetSim)}
+        >
+          <RotateCcw size={13} />
+        </button>
+      )}
 
       <button
         className="btn btn--icon"
-        disabled={busy || disabled}
+        disabled={held || sim.transport === 'LOCAL'}
         title={
-          status?.datalink?.connected
-            ? 'Simulate data link interruption - the twin holds rather than guessing'
-            : 'Restore data link'
+          sim.transport === 'LOCAL'
+            ? 'Data link simulation needs the ground-station backend'
+            : status?.datalink?.connected
+              ? 'Simulate data link interruption - the twin holds rather than guessing'
+              : 'Restore data link'
         }
-        onClick={() => run(() => api.setDatalink(!status?.datalink?.connected))}
+        onClick={() => run(async () => {
+          await api.setDatalink(!status?.datalink?.connected)
+          await refreshStatus()
+        })}
       >
         <Radio size={14} color={status?.datalink?.connected ? undefined : 'var(--crit)'} />
       </button>
 
       <button
-        className={`btn btn--sm ${demoRunning ? 'btn--danger' : ''}`}
-        disabled={busy || disabled}
-        title="Run the backend's scripted sortie: healthy, then a developing deviation"
-        onClick={() => run(toggleDemo)}
+        className="btn btn--sm"
+        disabled={held || !can.canStart}
+        title="Run the scripted sortie: healthy, then a developing deviation"
+        onClick={() => run(startDemo)}
       >
-        {demoRunning ? <Gauge size={13} /> : <Sparkles size={13} />}
-        {demoRunning ? 'Stop demo' : 'Start demo'}
+        <Sparkles size={13} />
+        {can.busy ? sim.stage ?? 'Starting' : startLabel}
       </button>
 
       {/* The narrated version: ninety seconds, sensor to advisory, with the

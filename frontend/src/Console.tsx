@@ -34,6 +34,7 @@ const Simulation = lazy(() => import('./pages/Simulation'))
 const MissionControl = lazy(() => import('./pages/MissionControl'))
 const Architecture = lazy(() => import('./pages/Architecture'))
 const DataModels = lazy(() => import('./pages/DataModels'))
+const Dataset = lazy(() => import('./pages/Dataset'))
 const Validation = lazy(() => import('./pages/Validation'))
 
 /**
@@ -56,6 +57,7 @@ const ENTRY: Record<string, { x?: number; y?: number; scale?: number }> = {
   '/mission': { scale: 1.035 },
   '/architecture': { x: 22 },
   '/data': { x: 22 },
+  '/dataset': { x: 22 },
   '/validation': { x: 22 },
 }
 
@@ -154,6 +156,7 @@ export default function Console() {
                 <Route path="/mission" element={<MissionControl />} />
                 <Route path="/architecture" element={<Architecture />} />
                 <Route path="/data" element={<DataModels />} />
+                <Route path="/dataset" element={<Dataset />} />
                 <Route path="/validation" element={<Validation />} />
                 <Route path="*" element={<CommandCenter />} />
               </Routes>

@@ -368,6 +368,63 @@ def sources() -> dict:
 # Flights
 # --------------------------------------------------------------------------
 
+# --------------------------------------------------------------------------
+# Dataset
+# --------------------------------------------------------------------------
+
+@router.get("/dataset/status")
+def dataset_status() -> dict:
+    """What is actually in the mounted corpus.
+
+    Every figure is counted off the filesystem on each call - files, rows,
+    valid rows, blank fields, sampling rate, label distribution - so the
+    dataset page never shows a number that was written into the source.
+    """
+    return service.dataset_report()
+
+
+@router.get("/dataset/validate")
+def dataset_validate() -> dict:
+    """Per-file validation, as PASS / WARNING / ERROR with the reason."""
+    report = service.dataset_report()
+    return {
+        "status": report["status"],
+        "detail": report["detail"],
+        "files": [
+            {
+                "name": f["name"],
+                "status": f["status"],
+                "detail": f["detail"],
+                "rows": f["rows"],
+                "valid_rows": f["valid_rows"],
+                "invalid_rows": f["invalid_rows"],
+                "missing_values": f["missing_values"],
+                "missing_columns": f["missing_columns"],
+                "sample_rate_hz": f["sample_rate_hz"],
+            }
+            for f in report["files"]
+        ],
+        "unsupported": report["unsupported"],
+        "capability_note": report["capability_note"],
+    }
+
+
+class ActivateRequest(BaseModel):
+    file: str | None = None
+
+
+@router.post("/dataset/activate")
+def dataset_activate(request: ActivateRequest | None = None) -> dict:
+    """Put the team corpus on the live seat."""
+    return service.activate_team_corpus(request.file if request else None)
+
+
+@router.post("/dataset/restore")
+def dataset_restore() -> dict:
+    """Hand the live seat back to the demonstration simulator."""
+    return service.restore_default_source()
+
+
 @router.get("/flights")
 def flights() -> dict:
     return {"flights": service.flight_list()}
@@ -434,14 +491,43 @@ def replay_speed(request: SpeedRequest) -> dict:
 
 @router.post("/replay/pause")
 def replay_pause() -> dict:
+    """Hold the replay, and report exactly where it stopped.
+
+    The index matters. The console pauses optimistically so the interface is
+    held the instant the button is pressed, which leaves it a fraction of a
+    tick behind the server; the twin is holding at *this* sample, and that is
+    the one the operator has to be looking at.
+    """
     service.pause()
-    return {"paused": True}
+    return {"paused": True, "t": round(service._sim_t, 1), "index": int(service._sim_t)}
 
 
 @router.post("/replay/resume")
 def replay_resume() -> dict:
     service.resume()
-    return {"paused": False}
+    return {"paused": False, "t": round(service._sim_t, 1), "index": int(service._sim_t)}
+
+
+class StepRequest(BaseModel):
+    samples: int = 1
+
+
+@router.post("/replay/step")
+def replay_step(request: StepRequest | None = None) -> dict:
+    """Advance exactly N 1 Hz timesteps while held, then hold again."""
+    return service.step((request.samples if request else 1) or 1)
+
+
+@router.post("/replay/stop")
+def replay_stop() -> dict:
+    """Hold the replay and mark the sortie stopped. State is kept."""
+    return service.stop_stream()
+
+
+@router.post("/replay/reset")
+def replay_reset() -> dict:
+    """Cold restart: rewind the source and clear every derived quantity."""
+    return service.reset_run()
 
 
 class SeekRequest(BaseModel):

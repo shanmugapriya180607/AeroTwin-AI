@@ -78,7 +78,7 @@ export default function EngineHealth() {
             <Badge tone="neutral">0 – 100</Badge>
           </header>
           <div className="panel__body panel__body--tight">
-            <HealthGauge value={engine?.health_index ?? 0} height={168} />
+            <HealthGauge value={engine?.health_index ?? null} height={168} />
             <p style={{ textAlign: 'center', fontSize: 'var(--t-small)', color: 'var(--ink-3)', marginTop: -4 }}>
               {engine?.reason}
             </p>

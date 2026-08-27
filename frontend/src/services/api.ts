@@ -96,6 +96,13 @@ export const api = {
   flight: (id: string) => request<any>(`/api/flights/${encodeURIComponent(id)}`),
 
   mlStatus: () => request<any>('/api/ml/status'),
+
+  datasetStatus: () => request<any>('/api/dataset/status'),
+  datasetValidate: () => request<any>('/api/dataset/validate'),
+  datasetActivate: (file?: string) =>
+    request<any>('/api/dataset/activate', { method: 'POST', body: JSON.stringify({ file: file ?? null }) }),
+  datasetRestore: () => request<any>('/api/dataset/restore', { method: 'POST' }),
+
   dataDictionary: () => request<any>('/api/data/dictionary'),
   refreshDictionary: () => request<any>('/api/data/dictionary/refresh', { method: 'POST' }),
   predict: (body?: { channels?: Record<string, number>; inputs?: Record<string, number> }) =>
@@ -109,6 +116,10 @@ export const api = {
     request<any>('/api/replay/speed', { method: 'POST', body: JSON.stringify({ time_scale }) }),
   pause: () => request<any>('/api/replay/pause', { method: 'POST' }),
   resume: () => request<any>('/api/replay/resume', { method: 'POST' }),
+  step: (samples = 1) =>
+    request<any>('/api/replay/step', { method: 'POST', body: JSON.stringify({ samples }) }),
+  stopReplay: () => request<any>('/api/replay/stop', { method: 'POST' }),
+  resetReplay: () => request<any>('/api/replay/reset', { method: 'POST' }),
   seek: (t: number) => request<any>('/api/replay/seek', { method: 'POST', body: JSON.stringify({ t }) }),
 
   startDemo: () => request<any>('/api/demo/start', { method: 'POST' }),

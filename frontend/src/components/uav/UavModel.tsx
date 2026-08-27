@@ -26,6 +26,14 @@ export interface UavVisualState {
   airborne: number
   /** Highlight the engine bay when the twin flags an anomaly. */
   alert: number
+  /**
+   * Hold the propeller.
+   *
+   * Set by the console when the simulation is held; left false by the intro
+   * and the showcase, where the aircraft is a subject being inspected rather
+   * than a simulation being run.
+   */
+  frozen?: boolean
   /** 0-1. Dissolves the airframe so the camera can travel through it into the
    *  propulsion bay during the intro. Defaults to fully opaque. */
   opacity?: number
@@ -150,7 +158,7 @@ export function UavModel({
 
   useFrame((_, delta) => {
     const s = state.current
-    if (propRef.current) {
+    if (propRef.current && !s.frozen) {
       // Visual rate, not the real 2,500 rpm - that would strobe at 60 fps.
       propRef.current.rotation.z += delta * (s.rpm / 2700) * 34
     }

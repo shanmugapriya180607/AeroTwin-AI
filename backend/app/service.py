@@ -29,13 +29,16 @@ from .sources.base import DataSource
 from .sources.can_bus import SocketCanSource
 from .sources.ngafid import NgafidReplaySource, corpus_mode, discover_flights
 from .sources.synthetic import DegradationSpec, SyntheticFlightSource
+from .sources.team_corpus import (TeamCorpusSource, corpus_report as team_corpus_report,
+                                 discover_files as discover_team_files)
 from .store.history import DEMO_SCHEDULE, generate_history
 from .twin.runtime import TwinRuntime
 
 TICK_HZ = 5.0
 TICK_INTERVAL = 1.0 / TICK_HZ
 DEFAULT_TIME_SCALE = 20.0
-DEMO_TIME_SCALE = 260.0
+DEMO_TIME_SCALE = 200.0        # one of the offered replay rates, so the
+                              # active chip matches what the clock is doing
 LIVE_FLIGHT_START = 12845
 
 BOOT_STEPS = [
@@ -47,6 +50,15 @@ BOOT_STEPS = [
     ("validation", "Running validation harness"),
     ("mission", "Loading mission profile"),
 ]
+
+
+
+def _seed_from(flight_id: str) -> int:
+    """A stable integer seed from any flight identifier."""
+    try:
+        return int(flight_id)
+    except (TypeError, ValueError):
+        return abs(hash(str(flight_id))) % 100000
 
 
 @dataclass
@@ -177,7 +189,9 @@ class AeroTwinService:
             profile=profile_id or getattr(self, "profile", None) or "ISR_STANDARD",
             flight_id=flight_id,
             degradation=DegradationSpec("exhaust_valve_distress", 3, s0, s1, onset, True),
-            seed=51000 + int(flight_id),
+            # The flight id is a corpus file stem when a file-backed source
+            # has the seat, so this cannot assume it parses.
+            seed=51000 + _seed_from(flight_id),
         )
 
     # -- lifecycle ----------------------------------------------------------
@@ -329,7 +343,10 @@ class AeroTwinService:
             return
 
     def _advance(self) -> None:
-        samples = max(1, int(round(self.time_scale / TICK_HZ)))
+        """One clock tick: as many 1 Hz samples as the replay rate calls for."""
+        self._advance_samples(max(1, int(round(self.time_scale / TICK_HZ))))
+
+    def _advance_samples(self, samples: int) -> None:
         source = self.source
         for _ in range(samples):
             if isinstance(source, SyntheticFlightSource):
@@ -525,9 +542,15 @@ class AeroTwinService:
         top = next(
             (a for a in runtime.anomalies if not a.abstained and a.score > 0.3), None
         )
+        envelope = runtime.envelope
         return {
             "engine_id": self.mission.engine_id,
-            "health_index": round(runtime.health_index, 1),
+            # A health number computed against a model that does not apply to
+            # the connected source is not a health number, so it is not sent as
+            # one. The console renders a dash and the abstention reason.
+            "health_index": round(runtime.health_index, 1) if envelope["health_valid"] else None,
+            "health_valid": envelope["health_valid"],
+            "envelope": envelope,
             "status": runtime.engine_state_label,
             "reason": runtime.engine_state_reason,
             "confidence": round(top.confidence, 4) if top else None,
@@ -615,7 +638,11 @@ class AeroTwinService:
 
     def all_sources(self) -> list[dict]:
         entries = []
-        for source in (SyntheticFlightSource(), NgafidReplaySource(), SocketCanSource()):
+        team_files = discover_team_files()
+        candidates: list = [SyntheticFlightSource(), NgafidReplaySource(), SocketCanSource()]
+        if team_files:
+            candidates.insert(1, TeamCorpusSource(team_files[0]))
+        for source in candidates:
             d = source.descriptor
             entries.append({
                 "id": d.id, "label": d.label, "kind": d.kind,
@@ -728,6 +755,63 @@ class AeroTwinService:
         self.mission.status = "ACTIVE"
         event_log.info("SYSTEM", "Replay resumed")
 
+    def step(self, samples: int = 1) -> dict:
+        """Advance exactly `samples` 1 Hz timesteps, then hold again.
+
+        The single-step control the operator gets while paused. It bypasses the
+        replay rate entirely - one press is one dataset sample, whatever the
+        clock was running at - and it leaves the simulation held, so pressing
+        it does not quietly restart the stream.
+        """
+        if not self.paused:
+            self.pause()
+        n = max(1, min(600, int(samples)))
+        self._advance_samples(n)
+        return {
+            "paused": True,
+            "t": round(self._sim_t, 1),
+            "index": int(self._sim_t),
+            "samples": n,
+        }
+
+    def stop_stream(self) -> dict:
+        """Hold the replay and mark the sortie stopped, but keep the state.
+
+        Distinct from RESET: everything computed so far stays inspectable -
+        the residual history, the anomalies, the advisory - which is what an
+        operator wants after stopping on something interesting.
+        """
+        self.paused = True
+        self.demo_active = False
+        self.mission.status = "STOPPED"
+        event_log.info("SYSTEM", "Replay stopped")
+        return {"stopped": True, "t": round(self._sim_t, 1)}
+
+    def reset_run(self) -> dict:
+        """Return the twin to a cold, restartable state.
+
+        The source is rebuilt from the top and every quantity derived from the
+        stopped sortie is discarded, so the next START begins with no residual
+        baseline, no CUSUM and no anomaly carried over from the last one.
+        """
+        self.runtime.reset_run()
+        self.source = self._build_source(
+            self.mission.flight_id, 0.62, 0.92, profile_id=self.profile.id,
+        )
+        self.source.open()
+        self._sim_t = 0.0
+        self.paused = True
+        self.demo_active = False
+        self.time_scale = DEFAULT_TIME_SCALE
+        self.datalink = True
+        self.datalink_lost_at = None
+        self.mission.elapsed_s = 0.0
+        self.mission.status = "IDLE"
+        self._announced = set()
+        self._last_alert_signature = ""
+        event_log.info("SYSTEM", "Simulation reset - twin state cleared")
+        return {"reset": True, "t": 0.0}
+
     def seek(self, t: float) -> None:
         self._sim_t = max(0.0, min(self.profile.duration_s, t))
         if isinstance(self.source, SyntheticFlightSource):
@@ -794,6 +878,80 @@ class AeroTwinService:
         self.demo_active = False
         self.time_scale = DEFAULT_TIME_SCALE
         event_log.info("SYSTEM", "Guided demonstration ended")
+
+    # -- the team corpus ----------------------------------------------------
+
+    def dataset_report(self) -> dict:
+        """Everything counted out of the team corpus, plus who has the seat.
+
+        Nothing here is a constant: the file list, the row counts, the sampling
+        rate and the label distribution are all read off the filesystem when
+        this is called, which is the only way the dataset page can claim to be
+        showing what is actually mounted.
+        """
+        report = team_corpus_report()
+        active = self.source.descriptor
+        report["active"] = active.id.startswith("TEAM_")
+        report["active_source"] = {
+            "id": active.id, "label": active.label, "provenance": active.provenance,
+        }
+        return report
+
+    def activate_team_corpus(self, name: str | None = None) -> dict:
+        """Give the team corpus the live seat.
+
+        The whole data-agnostic claim in one call: a corpus with a different
+        schema, different units and no per-cylinder instrumentation takes over
+        the stream, and nothing downstream changes. What it cannot support is
+        reported rather than synthesised.
+        """
+        files = discover_team_files()
+        if not files:
+            return {"activated": False, "detail": "Team corpus not present"}
+        chosen = next((p for p in files if p.stem == name or p.name == name), files[0])
+
+        source = TeamCorpusSource(chosen)
+        try:
+            source.open()
+        except Exception as exc:
+            event_log.warning("TELEMETRY", f"Team corpus {chosen.name} unusable ({exc})")
+            return {"activated": False, "detail": str(exc)}
+
+        self.runtime.reset_run()
+        self.source = source
+        self._sim_t = 0.0
+        self.paused = False
+        self.demo_active = False
+        self.mission.flight_id = chosen.stem
+        self.mission.status = "ACTIVE"
+        self.mission.duration_s = float(len(source))
+        self.time_scale = min(self.time_scale, 20.0)
+        event_log.info(
+            "TELEMETRY",
+            f"Team corpus {chosen.name} on the live seat "
+            f"({len(source):,} samples at 1 Hz, tagged SIMULATED)",
+        )
+        return {
+            "activated": True,
+            "file": chosen.name,
+            "samples": len(source),
+            "provenance": "SIMULATED",
+            "duration_s": float(len(source)),
+        }
+
+    def restore_default_source(self) -> dict:
+        """Hand the live seat back to the demonstration simulator."""
+        self.runtime.reset_run()
+        self.mission.flight_id = str(self._flight_number)
+        self.source = self._build_source(
+            self.mission.flight_id, 0.62, 0.92, profile_id=self.profile.id,
+        )
+        self.source.open()
+        self._sim_t = 0.0
+        self.mission.duration_s = self.profile.duration_s
+        self.mission.status = "ACTIVE"
+        event_log.info("TELEMETRY", "Live seat returned to the demonstration simulator")
+        return {"activated": True, "source": self.source.descriptor.id}
 
     def run_mission_simulation(self, profile_id: str, custom: dict | None = None) -> SimulationResult:
         if profile_id.upper() == "CUSTOM" and custom:

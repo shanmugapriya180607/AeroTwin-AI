@@ -156,7 +156,7 @@ export default function CommandCenter() {
             <StatusBadge status={engine?.status} />
           </header>
           <div className="panel__body panel__body--tight">
-            <HealthGauge value={engine?.health_index ?? 0} height={158} />
+            <HealthGauge value={engine?.health_index ?? null} height={158} />
             <p style={{ fontSize: 'var(--t-small)', color: 'var(--ink-3)', textAlign: 'center', marginTop: -6 }}>
               {engine?.reason ?? 'Awaiting telemetry'}
             </p>
