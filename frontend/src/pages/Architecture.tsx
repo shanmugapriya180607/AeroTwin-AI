@@ -11,6 +11,7 @@
 import { useEffect, useState } from 'react'
 import { ArrowRight, Boxes, Repeat, Server } from 'lucide-react'
 import { api } from '../services/api'
+import { liveOrSnapshot, snapshotAge } from '../services/reports'
 import { Badge, Empty, Kv, Loading, Note, PageHead } from '../components/ui/Primitives'
 
 export default function Architecture() {
@@ -20,7 +21,7 @@ export default function Architecture() {
   const [pulse, setPulse] = useState(0)
 
   useEffect(() => {
-    void api.architecture().then((result) => {
+    void liveOrSnapshot(api.architecture, 'architecture').then((result) => {
       if (result) setData(result)
       setLoaded(true)
     })
@@ -39,7 +40,16 @@ export default function Architecture() {
     <>
       <PageHead
         title="System Architecture"
-        actions={<Badge tone="info">ISO 23247 ALIGNED · ON-PREMISE</Badge>}
+        actions={
+          <div className="row row--tight">
+            {data?.snapshot && (
+              <Badge tone="caution" title={`Captured at build time, ${snapshotAge(data.generated_at)}`}>
+                BUILD SNAPSHOT
+              </Badge>
+            )}
+            <Badge tone="info">ISO 23247 ALIGNED · ON-PREMISE</Badge>
+          </div>
+        }
       />
 
       {!loaded ? (

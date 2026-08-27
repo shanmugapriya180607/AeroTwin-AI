@@ -50,14 +50,18 @@ export function Badge({
   tone = 'neutral',
   dot,
   live,
+  title,
 }: {
   children: ReactNode
   tone?: BadgeTone
   dot?: boolean
   live?: boolean
+  /** Hover detail. Used where the badge is a summary of something with a
+   *  precise value behind it - when a build snapshot was captured, say. */
+  title?: string
 }) {
   return (
-    <span className={`badge ${tone !== 'neutral' ? `badge--${tone}` : ''}`}>
+    <span className={`badge ${tone !== 'neutral' ? `badge--${tone}` : ''}`} title={title}>
       {dot && <i className={`dot ${live ? 'dot--live' : ''}`} />}
       {children}
     </span>

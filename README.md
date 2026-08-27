@@ -369,53 +369,76 @@ time.
 
 ## Deployment
 
-The platform is two processes: a React frontend and a Python backend. A static
-host such as Vercel deploys the **frontend only**.
+The platform is two processes: a React console and a Python ground station.
 
-### Vercel
+### Vercel — the console
 
-Set **Root Directory** to `frontend` in the project settings. Everything else is
-in [`frontend/vercel.json`](frontend/vercel.json) — framework preset, build
-command, output directory, and the rewrite that makes `/intro`, `/uav` and
-`/dashboard` resolve on direct navigation and on refresh. Without that rewrite
-those paths are React Router routes with no file behind them and return 404.
+Import the repository at [vercel.com/new](https://vercel.com/new). The root
+[`vercel.json`](vercel.json) supplies the build command, the output directory
+and the rewrite that makes `/intro`, `/uav`, `/dashboard` and the rest resolve
+on direct navigation and on refresh — without it those are React Router paths
+with no file behind them and return 404. No settings to change; **Deploy** is
+enough.
 
-### Backend
+Deploying from the `frontend` directory instead also works — set **Root
+Directory** to `frontend` and [`frontend/vercel.json`](frontend/vercel.json)
+takes over.
 
-Vercel's serverless functions do not support the WebSocket transport this
-platform streams telemetry over, so the backend belongs on a host that does —
-Render, Railway, Fly.io, or any container host. Point the frontend at it:
+### The backend cannot run on Vercel
+
+Not a shortcut — an architectural constraint worth stating plainly. Vercel runs
+serverless functions: an invocation handles one request and is then frozen.
+This backend needs three things that model cannot provide.
+
+| Requirement | Why serverless cannot host it |
+|---|---|
+| A twin loop advancing at 5 Hz between requests | Nothing runs between invocations |
+| Four WebSocket topics streaming telemetry | Vercel functions do not accept WebSocket upgrades |
+| ~10 s boot — history replay, detector fit | Paid on every cold start, above the Hobby execution limit |
+
+So the ground station belongs on a host that runs a process: Render, Railway,
+Fly.io, or any container host. Point the console at it with a Vercel
+environment variable and redeploy:
 
 ```
 VITE_API_BASE=https://your-backend-host
 ```
 
-Set as a Vercel environment variable and redeploy. The REST client and the
-WebSocket transport both follow it. Left unset, both use the same origin, which
-is correct for local development and for the single-host deployment where the
-backend serves the built frontend itself.
+The REST client and the WebSocket transport both follow it. Left unset, both
+use the same origin — correct for local development, and for the single-host
+deployment where the backend serves the built console itself.
 
-### Frontend without a backend
+### What the console does without a backend
 
-The console is built to stay demonstrable when the backend is unreachable:
-every call resolves to `null`, the local transport takes the seat, and `DEMO`
-appears on every value it produces. The 3D intro, the UAV showcase, telemetry,
-Expected vs Actual, residuals, anomalies, engine health, the narrated story
-**and the full replay controls** — start, pause, resume, step, stop, reset,
-speed — all run.
+This is the important part, because it is what a Vercel-only deployment is.
+**Every screen works and every control works.** The local transport takes the
+seat, `DEMO` appears on every value it produces, and the simulation state
+machine is identical — start, pause, resume, step, stop, reset, speed, the
+narrated story, the 3D intro, the UAV showcase, telemetry, Expected vs Actual,
+residuals, anomalies, engine health.
 
-The **Dataset** screen also works, from a report generated at build time by the
-same code the API serves:
+The four reference screens — **Dataset**, **Data & Models**, **Validation**,
+**Architecture** — read a build-time snapshot produced by the same functions
+the API serves:
 
 ```bash
 cd backend
-python -m tools.export_dataset_report   # writes frontend/public/dataset-report.json
+python -m tools.export_static_reports   # writes frontend/public/reports/*.json
 ```
 
-The figures are identical because they come from the same function over the same
-files; only *when* they were counted differs, and the page says `BUILD SNAPSHOT`
-rather than passing it off as a live inspection. Replaying a corpus file through
-the twin still needs the backend, and that button says so.
+The figures are identical because they come from the same code over the same
+files. Only *when* they were produced differs, and each screen carries a
+`BUILD SNAPSHOT` badge rather than passing one off as a live reading. Two
+things are deliberately **not** snapshotted, because a frozen copy of a live
+value is exactly what this project must never ship:
+
+- **the live prediction endpoint** on Data & Models — a reading of a running
+  twin, so it says `LIVE ENDPOINT` and names what would exercise it;
+- **which source holds the live seat**, and replaying a corpus file through the
+  twin — both need a twin to be running, and the buttons say so.
+
+Verified with the backend deliberately stopped: 13 routes, zero error states,
+pause/step/start/story all working.
 
 Screens that read the backend directly — Data & Models, Validation,
 Architecture — show their empty state instead. For a complete demonstration,

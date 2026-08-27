@@ -14,6 +14,7 @@
 import { useEffect, useState } from 'react'
 import { Braces, Database, FlaskConical, RefreshCw, Terminal } from 'lucide-react'
 import { api } from '../services/api'
+import { liveOrSnapshot, snapshotAge } from '../services/reports'
 import {
   Badge, Empty, Loading, Metrics, PageHead, ProvenanceTag, StatusRows, TagRow,
   fmt, pct,
@@ -37,9 +38,12 @@ export default function DataModels() {
   const [loaded, setLoaded] = useState(false)
 
   const load = async () => {
+    // The dictionary and the model cards fall back to the build-time snapshot
+    // where no ground station answers. The live prediction does not: it is a
+    // reading of a running twin, and a frozen copy of one would be a fiction.
     const [dict, mlStatus, predict] = await Promise.all([
-      api.dataDictionary(),
-      api.mlStatus(),
+      liveOrSnapshot(api.dataDictionary, 'dictionary'),
+      liveOrSnapshot(api.mlStatus, 'ml'),
       api.predict(),
     ])
     if (dict) setDictionary(dict)
@@ -47,6 +51,9 @@ export default function DataModels() {
     if (predict) setPrediction(predict)
     setLoaded(true)
   }
+
+  /** True when this page is reading a snapshot rather than a live backend. */
+  const fromSnapshot = !!dictionary?.snapshot
 
   useEffect(() => {
     void load()
@@ -75,11 +82,23 @@ export default function DataModels() {
         title="Data & Models"
         actions={
           <div className="row row--tight">
+            {fromSnapshot && (
+              <Badge tone="caution" title={`Captured at build time, ${snapshotAge(dictionary?.generated_at)}`}>
+                BUILD SNAPSHOT
+              </Badge>
+            )}
             <Badge tone={real ? 'real' : 'demo'}>{ingest?.mode ?? 'DEMO'}</Badge>
             <Badge tone={failed ? 'crit' : needsConfig ? 'caution' : 'ok'} dot live={!failed && !needsConfig}>
               {state}
             </Badge>
-            <button className="btn btn--sm" onClick={refresh} disabled={refreshing}>
+            <button
+              className="btn btn--sm"
+              onClick={refresh}
+              disabled={refreshing || fromSnapshot}
+              title={fromSnapshot
+                ? 'Rescanning the corpus needs the ground-station backend'
+                : 'Re-read the corpus from disk'}
+            >
               <RefreshCw size={12} /> {refreshing ? 'SCANNING' : 'RESCAN'}
             </button>
           </div>
@@ -98,7 +117,10 @@ export default function DataModels() {
           {!loaded ? (
             <Loading height={132} />
           ) : !ingest ? (
-            <Empty label="BACKEND UNREACHABLE" />
+            <Empty
+              label="NO INGEST REPORT"
+              detail="No ground station answered and no build-time report shipped with this bundle."
+            />
           ) : (
             <>
               <Metrics
@@ -306,6 +328,8 @@ export default function DataModels() {
           <span className="panel__spacer" />
           <button
             className="btn btn--sm"
+            disabled={!prediction}
+            title={prediction ? 'Call the endpoint again' : 'Needs a running ground station'}
             onClick={() => void api.predict().then((r) => r && setPrediction(r))}
           >
             RE-RUN
@@ -315,7 +339,14 @@ export default function DataModels() {
           {!loaded ? (
             <Loading height={150} />
           ) : !prediction ? (
-            <Empty label="BACKEND UNREACHABLE" />
+            /* Not an error. Every other panel on this page describes a
+               contract and can be answered from a build-time snapshot; this
+               one is a reading of a twin that is running right now, and a
+               frozen copy of one would be a fiction. */
+            <Empty
+              label="LIVE ENDPOINT"
+              detail="This panel calls the running twin. Start the ground station to exercise it."
+            />
           ) : (
             <div className="grid" style={{ gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1.15fr)' }}>
               <StatusRows

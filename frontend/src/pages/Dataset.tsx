@@ -19,6 +19,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Database, Play, RefreshCw, RotateCcw } from 'lucide-react'
 import { api } from '../services/api'
+import { liveOrSnapshot } from '../services/reports'
 import { useTwin } from '../store/useTwin'
 import {
   Badge, Empty, Loading, Metrics, Note, PageHead, StatusRows, TagRow, fmt,
@@ -40,18 +41,8 @@ export default function Dataset() {
     // console served as a static bundle - the same report, produced by the
     // same function at build time, ships as a file beside the app. The figures
     // are the same; only when they were counted differs, and the page says so.
-    const live = await api.datasetStatus()
-    if (live) {
-      setReport(live)
-      setLoaded(true)
-      return
-    }
-    try {
-      const response = await fetch(`${import.meta.env.BASE_URL}dataset-report.json`)
-      if (response.ok) setReport(await response.json())
-    } catch {
-      /* no backend and no snapshot: the empty state below says exactly that */
-    }
+    const next = await liveOrSnapshot(api.datasetStatus, 'dataset')
+    if (next) setReport(next)
     setLoaded(true)
   }, [])
 

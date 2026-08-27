@@ -10,6 +10,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { BookOpen, ShieldCheck, TriangleAlert } from 'lucide-react'
 import { api } from '../services/api'
+import { liveOrSnapshot, snapshotAge } from '../services/reports'
 import { AXIS, CHART_BASE, EChart } from '../components/charts/EChart'
 import {
   Badge, Empty, Loading, Meter, Metrics, PageHead, StatusRows, TagRow, fmt,
@@ -39,7 +40,7 @@ export default function Validation() {
   const [loaded, setLoaded] = useState(false)
 
   useEffect(() => {
-    void api.validation().then((result) => {
+    void liveOrSnapshot(api.validation, 'validation').then((result) => {
       if (result) setData(result)
       setLoaded(true)
     })
@@ -130,6 +131,11 @@ export default function Validation() {
         title="Validation"
         actions={
           <div className="row row--tight">
+            {data?.snapshot && (
+              <Badge tone="caution" title={`Captured at build time, ${snapshotAge(data.generated_at)}`}>
+                BUILD SNAPSHOT
+              </Badge>
+            )}
             <Badge tone={running ? 'caution' : 'ok'} dot live={running}>
               {running ? 'RUNNING' : report.status}
             </Badge>
