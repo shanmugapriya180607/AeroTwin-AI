@@ -5,7 +5,7 @@
   "outputDirectory": "dist",
   "rewrites": [
     {
-      "source": "/((?!api/|ws/|assets/|favicon).*)",
+      "source": "/((?!api/|ws/|assets/|reports/|favicon|dataset-report).*)",
       "destination": "/index.html"
     }
   ]

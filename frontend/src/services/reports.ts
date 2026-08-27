@@ -42,6 +42,19 @@ export async function loadSnapshot<T extends Snapshotted>(name: SnapshotName): P
   try {
     const response = await fetch(`${import.meta.env.BASE_URL}reports/${name}.json`)
     if (!response.ok) return null
+    // A single-page host rewrites unknown paths to index.html and answers 200
+    // with HTML. Parsing that throws, which would look identical to "no
+    // snapshot shipped" - so the content type is checked and a misconfigured
+    // rewrite is reported rather than silently degrading every reference
+    // screen to an empty state.
+    const type = response.headers.get('content-type') ?? ''
+    if (!type.includes('json')) {
+      console.warn(
+        `[aerotwin] reports/${name}.json was answered as ${type || 'an unknown type'} - ` +
+        'the host is rewriting it to the app shell. Exclude /reports/ from the SPA rewrite.',
+      )
+      return null
+    }
     return (await response.json()) as T
   } catch {
     return null
