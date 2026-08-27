@@ -50,12 +50,17 @@ export function DemoControls() {
     }
   }
 
-  /** START on a cold simulation, RESTART on a stopped one, REPLAY on a
-   *  finished one - the same command, named for what it does from here. */
+  /** One command, named for what it does from the current state.
+   *
+   *  It is never disabled. START DEMO does not mean "begin" - it means
+   *  "restart this sortie as the compressed demonstration", which an operator
+   *  must be able to ask for at any time. Greying it out because a sortie was
+   *  already running made the console's most prominent button look broken. */
   const startLabel =
-    sim.status === 'stopped' ? 'Restart'
-      : sim.status === 'completed' ? 'Replay'
-        : sim.status === 'error' ? 'Retry' : 'Start demo'
+    sim.status === 'running' || sim.status === 'paused' ? 'Restart demo'
+      : sim.status === 'stopped' ? 'Restart'
+        : sim.status === 'completed' ? 'Replay'
+          : sim.status === 'error' ? 'Retry' : 'Start demo'
 
   return (
     <div className="row row--tight">
@@ -147,8 +152,8 @@ export function DemoControls() {
 
       <button
         className="btn btn--sm"
-        disabled={held || !can.canStart}
-        title="Run the scripted sortie: healthy, then a developing deviation"
+        disabled={held}
+        title="Run the scripted sortie from the top: healthy, then a developing deviation"
         onClick={() => run(startDemo)}
       >
         <Sparkles size={13} />

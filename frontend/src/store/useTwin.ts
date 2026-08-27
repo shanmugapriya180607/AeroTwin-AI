@@ -325,13 +325,17 @@ export const useTwin = create<TwinStore>((set, get) => ({
   toggleCorner: () => set((s) => ({ cornerCollapsed: !s.cornerCollapsed })),
 
   refreshStatus: async () => {
+    // Captured before the request goes out. If the operator issues a command
+    // while it is in flight, the answer describes a state that no longer
+    // exists and must not be allowed to reverse the command.
+    const epoch = simulation.commandEpoch
     const status = await api.systemStatus()
     if (!status) return
     set({ status, demoRunning: !!status.demo_active })
     // In LIVE mode the backend owns the clock, so it is the authority on
     // whether anything is advancing. This is what catches a server paused or
     // released from somewhere else - another tab, a restart, a stale session.
-    simulation.reconcile(!!status.paused)
+    simulation.reconcile(!!status.paused, epoch)
   },
 
   // -- simulation control -------------------------------------------------
@@ -348,7 +352,7 @@ export const useTwin = create<TwinStore>((set, get) => ({
     set({ history: {}, healthTrail: [], alerts: null })
     if (liveSeen || simulation.transportKind === 'LIVE') {
       simulation.attach(liveDemo)
-      await simulation.start()
+      await simulation.restart()
       if (simulation.getState().status !== 'error') {
         await get().refreshStatus()
         return
@@ -358,7 +362,7 @@ export const useTwin = create<TwinStore>((set, get) => ({
     }
     simulation.attach(local)
     set({ mode: 'DEMO' })
-    await simulation.start()
+    await simulation.restart()
   },
 
   pauseSim: async () => {

@@ -53,6 +53,9 @@ export function useSimRunning(): boolean {
  */
 export function controlsFor(status: SimStatus) {
   return {
+    /** Whether a *cold* start applies. The toolbar does not gate START DEMO on
+     *  this - that command restarts the sortie and is valid from any state -
+     *  but it is what distinguishes a first start from a restart. */
     canStart: status === 'idle' || status === 'stopped' || status === 'completed' || status === 'error',
     canPause: status === 'running',
     canResume: status === 'paused',

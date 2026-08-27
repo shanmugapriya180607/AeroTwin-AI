@@ -831,20 +831,35 @@ class TelemetryFrame:
   simulation-driven does.
 </p>
 
-<p>
-  Two subtleties are handled explicitly. A live frame already in flight when the
-  command went out is <strong>dropped at the gate</strong>, so no number moves a
-  beat after the press. And because the console pauses optimistically — held on
-  the press, not on the round trip — it then <strong>settles onto the sample the
-  backend actually stopped on</strong>, which the pause response reports. The
-  index on screen is the index the twin is holding at.
-</p>
+<p>Three subtleties are handled explicitly.</p>
+<ul>
+  <li>
+    A live frame already in flight when the command went out is
+    <strong>dropped at the gate</strong>, so no number moves a beat after the
+    press.
+  </li>
+  <li>
+    The console pauses optimistically — held on the press, not on the round
+    trip — then <strong>settles onto the sample the backend actually stopped
+    on</strong>. That figure is read after the tick in progress has finished,
+    and off the same runtime object <code>/telemetry/latest</code> reports
+    from, so the index the console settles onto and the frame it displays are
+    the same sample by construction rather than by coincidence.
+  </li>
+  <li>
+    The status poll reconciles the console against the backend, and a status
+    response <em>already in flight</em> when PAUSE was pressed comes back
+    saying the server is running. Following it would silently undo the pause,
+    so every local command stamps an epoch and a snapshot that predates one is
+    <strong>ignored</strong>.
+  </li>
+</ul>
 
 <h3>11.3 &nbsp;The control surface</h3>
 <table>
   <thead><tr><th style="width:16%">Control</th><th>Behaviour</th></tr></thead>
   <tbody>
-    <tr><td>START</td><td>Dataset → simulation → twin → AI → telemetry, each stage named. Pressing it twice never creates a second loop</td></tr>
+    <tr><td>START DEMO</td><td>Dataset → simulation → twin → AI → telemetry, each stage named. <strong>Never disabled</strong> — it means "restart this sortie as the compressed demonstration", which is valid from any state, and it reads <code>RESTART DEMO</code> while one is running. Pressing it twice never creates a second loop</td></tr>
     <tr><td>PAUSE</td><td>As §11.2</td></tr>
     <tr><td>RESUME</td><td>Continues from exactly that timestep — never restarts, never skips, never re-prepares the source</td></tr>
     <tr><td>STEP</td><td>Advances exactly one 1 Hz sample regardless of replay rate, then holds again</td></tr>
@@ -1055,7 +1070,7 @@ cd ../frontend && npm install</code></pre>
 
 <h3>15.2 &nbsp;Simulation-engine invariants</h3>
 <p>
-  27 assertions run against a fake scheduler, so the properties are exact rather
+  29 assertions run against a fake scheduler, so the properties are exact rather
   than dependent on wall-clock timing. Among them:
 </p>
 
@@ -1069,29 +1084,31 @@ cd ../frontend && npm install</code></pre>
     <tr><td>STEP is exactly one</td><td>+1 s, status still <code>paused</code>; a no-op while running</td></tr>
     <tr><td>Settle after pause</td><td>The held index becomes the sample the backend actually stopped on</td></tr>
     <tr><td>Adopt honestly</td><td>A backend already paused is adopted as paused, never as running</td></tr>
+    <tr><td>Stale snapshots ignored</td><td>A status poll issued before PAUSE and answered after it cannot restart the clock; one issued after it still can</td></tr>
     <tr><td>End of source</td><td>Holds on the last real sample rather than wrapping silently</td></tr>
   </tbody>
 </table>
 
 <h3>15.3 &nbsp;End-to-end</h3>
 <p>
-  31 checks driven through a real Chromium against the running stack — both with
+  32 checks driven through a real Chromium against the running stack — both with
   the backend and with it deliberately stopped. All pass. Representative measured
   results:
 </p>
 
 <pre><code>PASS  simulation adopted the live stream        status=running transport=LIVE
-PASS  telemetry advances                        t 375 -> 451
-PASS  values EXACTLY unchanged after 6 s held   t 459->459  rpm 2556.08->2556.08
-PASS  STEP advances exactly one timestep        t 460 -> 461, status paused
-PASS  RESUME continues from the same timestep   t 461 -> 532
+PASS  telemetry advances                        t 583 -> 651
+PASS  values EXACTLY unchanged after 6 s held   t 683->683  rpm 2543.28->2543.28
+PASS  clock and frame settled on same sample    engine 683 vs frame 683
+PASS  STEP advances exactly one timestep        t 683 -> 684, status paused
+PASS  RESUME continues from the same timestep   t 684 -> 696
 PASS  STOP stops the simulation                 status=stopped
-PASS  only one simulation loop runs             128.0 sim-s per real s
+PASS  only one simulation loop runs             64.0 sim-s per real s
 PASS  engine animation held while paused        simClock.running=false
 PASS  dataset page shows counted figures        ROWS 4,200  VALID 4,200
 PASS  every route renders
 PASS  no unexpected console errors
-=== 31/31 passed ===</code></pre>
+=== 32/32 passed ===</code></pre>
 
 <!-- ══════════════════════════════ 16 ══════════════════════════════ -->
 <h2><span class="n">16</span>Limitations</h2>

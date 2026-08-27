@@ -351,6 +351,34 @@ describe('SimulationEngine - start-up and failure', () => {
     expect(engine.getState().status).toBe('running')
   })
 
+  it('ignores a status snapshot that predates the operator command', async () => {
+    // The exact race that let a paused console start advancing again: a status
+    // poll issued before PAUSE, answered after it, saying the server is running.
+    const sched = fakeScheduler()
+    const engine = new SimulationEngine(sched.scheduler)
+    engine.attach(fakeTransport('LIVE'))
+    engine.adopt(4550)
+
+    const epoch = engine.commandEpoch      // captured as the request goes out
+    await engine.pause()                   // the operator presses PAUSE
+    engine.reconcile(false, epoch)         // the stale answer lands
+
+    expect(engine.getState().status).toBe('paused')
+    expect(engine.observeFrame(500)).toBe(false)
+  })
+
+  it('still follows the backend when the snapshot is current', async () => {
+    const sched = fakeScheduler()
+    const engine = new SimulationEngine(sched.scheduler)
+    engine.attach(fakeTransport('LIVE'))
+    engine.adopt(4550)
+    await engine.pause()
+
+    // A poll issued after the command, reporting the server released elsewhere.
+    engine.reconcile(false, engine.commandEpoch)
+    expect(engine.getState().status).toBe('running')
+  })
+
   it('settles onto the sample the source actually stopped on', async () => {
     const sched = fakeScheduler()
     const engine = new SimulationEngine(sched.scheduler)

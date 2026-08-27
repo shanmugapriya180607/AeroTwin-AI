@@ -10,6 +10,17 @@ A physics model of the engine runs in lockstep with the engine itself. The
 difference between what physics expects and what the sensors report — the
 **residual** — is what everything downstream reads.
 
+> ### 📄 [**Download the full technical documentation (PDF, 16 pages)**](docs/AEROTWIN-Technical-Documentation.pdf)
+>
+> How every layer works — the data contract, the physics model, the residual
+> engine, state estimation, detection and fusion, the abstention rules, the
+> simulation clock, the API surface, verification results and the stated
+> limitations.
+>
+> *On GitHub: open the file and press **Download raw file**. The HTML source is
+> at [`docs/documentation.html`](docs/documentation.html) if you would rather
+> read it in a browser.*
+
 ---
 
 ## Problem Statement
@@ -345,7 +356,7 @@ API documentation: `http://127.0.0.1:8011/docs`
 
 ```bash
 cd frontend
-npm test          # 27 simulation-engine invariants (vitest)
+npm test          # 29 simulation-engine invariants (vitest)
 npx tsc -b        # type check
 npm run build     # production bundle
 ```
@@ -452,7 +463,7 @@ console owns a timer that advances simulation state.
 
 | Control | Behaviour |
 |---|---|
-| `START` | full start-up: dataset → simulation → twin → AI → telemetry, each stage named on screen |
+| `START DEMO` | full start-up: dataset → simulation → twin → AI → telemetry, each stage named. Never disabled — it restarts the sortie as the compressed demonstration, and reads `RESTART DEMO` while one is running |
 | `PAUSE` | the clock, the index, the charts, the twin, the pistons and the aircraft all hold on the same sample |
 | `RESUME` | continues from exactly that timestep — never restarts, never skips |
 | `STEP` | advances exactly one 1 Hz sample, then holds again |
@@ -469,7 +480,7 @@ from the reduced model that runs in the browser when no backend answers — only
 the transport differs. That is what makes the controls work on a static
 deployment, where they previously did nothing at all.
 
-**Invariants under test.** `npm test` in `frontend/` runs 27 assertions against
+**Invariants under test.** `npm test` in `frontend/` runs 29 assertions against
 a fake scheduler, including: pressing `START` twice creates exactly one loop; a
 held simulation's index does not change across a hundred ticks; a live frame
 that arrives after `PAUSE` is dropped; `RESUME` does not re-prepare the source;

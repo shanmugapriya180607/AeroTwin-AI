@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
@@ -15,7 +17,7 @@ from ..ml.anomaly_model import MIN_TRAIN_SAMPLES, SKLEARN_AVAILABLE, anomaly_mod
 from ..ml.predict import predict_engine_state
 from ..ml.preprocessing import DATA_DICTIONARY, DATA_DICTIONARY_NOTE, ingest_report
 from ..mission import route as mission_route
-from ..service import service
+from ..service import TICK_INTERVAL, service
 
 router = APIRouter(prefix="/api")
 
@@ -490,22 +492,36 @@ def replay_speed(request: SpeedRequest) -> dict:
 
 
 @router.post("/replay/pause")
-def replay_pause() -> dict:
+async def replay_pause() -> dict:
     """Hold the replay, and report exactly where it stopped.
 
     The index matters. The console pauses optimistically so the interface is
     held the instant the button is pressed, which leaves it a fraction of a
     tick behind the server; the twin is holding at *this* sample, and that is
     the one the operator has to be looking at.
+
+    Two details make the number trustworthy. It is read *after* yielding long
+    enough for the tick already in progress to finish, so it is not a reading
+    taken mid-batch. And it comes off `runtime.current` rather than the
+    service's sample counter, which is the same object `/telemetry/latest`
+    reports from - so the index the console settles onto and the frame it
+    displays are the same sample by construction, not by coincidence.
     """
     service.pause()
-    return {"paused": True, "t": round(service._sim_t, 1), "index": int(service._sim_t)}
+    await asyncio.sleep(TICK_INTERVAL * 1.5)
+    return {"paused": True, **_held_position()}
+
+
+def _held_position() -> dict:
+    tick = service.runtime.current
+    t = float(tick.t) if tick else float(service._sim_t)
+    return {"t": round(t, 1), "index": int(t)}
 
 
 @router.post("/replay/resume")
 def replay_resume() -> dict:
     service.resume()
-    return {"paused": False, "t": round(service._sim_t, 1), "index": int(service._sim_t)}
+    return {"paused": False, **_held_position()}
 
 
 class StepRequest(BaseModel):
@@ -515,7 +531,9 @@ class StepRequest(BaseModel):
 @router.post("/replay/step")
 def replay_step(request: StepRequest | None = None) -> dict:
     """Advance exactly N 1 Hz timesteps while held, then hold again."""
-    return service.step((request.samples if request else 1) or 1)
+    result = service.step((request.samples if request else 1) or 1)
+    # Same source as the pause position, for the same reason.
+    return {**result, **_held_position()}
 
 
 @router.post("/replay/stop")

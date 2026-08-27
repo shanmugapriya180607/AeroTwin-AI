@@ -74,6 +74,22 @@ export class SimulationEngine {
    *  run cannot resurrect itself after the operator has moved on. */
   private generation = 0
 
+  /**
+   * Incremented by every local control command.
+   *
+   * The status poll reconciles the console against the backend, and without
+   * this a status response that was already in flight when PAUSE was pressed
+   * comes back saying `paused: false` and silently undoes the pause. A caller
+   * captures this before issuing the request and hands it back; a snapshot
+   * that predates a command cannot be used to reverse it.
+   */
+  private epoch = 0
+
+  /** Read before issuing a status request; pass back to `reconcile`. */
+  get commandEpoch(): number {
+    return this.epoch
+  }
+
   constructor(private scheduler: Scheduler = defaultScheduler) {}
 
   // -- observation --------------------------------------------------------
@@ -174,8 +190,11 @@ export class SimulationEngine {
    * was paused from somewhere else - another tab, a restart, the previous
    * session - and the status poll is what catches it.
    */
-  reconcile(backendPaused: boolean): void {
+  reconcile(backendPaused: boolean, epoch?: number): void {
     if (this.transport?.kind !== 'LIVE') return
+    // A snapshot taken before the operator's last command describes a state
+    // that no longer exists. Following it would undo the command.
+    if (epoch !== undefined && epoch !== this.epoch) return
     const { status } = this.snapshot
     if (backendPaused && status === 'running') {
       this.patch({ status: 'paused' })
@@ -211,6 +230,7 @@ export class SimulationEngine {
       return
     }
 
+    this.epoch += 1
     const generation = ++this.generation
     this.teardown()
     this.clock.t = 0
@@ -242,8 +262,26 @@ export class SimulationEngine {
     this.startLoop()
   }
 
+  /**
+   * Start, discarding whatever is currently running.
+   *
+   * `start()` is idempotent by contract - pressing it twice must never make two
+   * loops - which makes it a no-op on an already-running simulation. But START
+   * DEMO is not "begin"; it is "restart this sortie as the compressed
+   * demonstration", and an operator must be able to press it at any time. So it
+   * comes through here, where the current run is torn down first.
+   */
+  async restart(): Promise<void> {
+    this.epoch += 1
+    this.generation += 1
+    this.teardown()
+    this.patch({ status: 'idle', stage: null, error: null })
+    await this.start()
+  }
+
   async pause(): Promise<void> {
     if (this.snapshot.status !== 'running') return
+    this.epoch += 1
     // Held immediately, before the command has even gone out: the interface
     // must stop on the press, not on the round trip. The loop keeps its handle
     // but the tick returns at once, so RESUME continues from this index rather
@@ -266,6 +304,7 @@ export class SimulationEngine {
 
   async resume(): Promise<void> {
     if (this.snapshot.status !== 'paused') return
+    this.epoch += 1
     await this.transport?.resume()
     this.patch({ status: 'running' })
     // A run that was stopped and then resumed has no loop; one that was merely
@@ -276,6 +315,7 @@ export class SimulationEngine {
   async stop(): Promise<void> {
     const { status } = this.snapshot
     if (status === 'idle' || status === 'stopped' || status === 'stopping') return
+    this.epoch += 1
     this.generation += 1
     this.patch({ status: 'stopping' })
     this.teardown()
@@ -286,6 +326,7 @@ export class SimulationEngine {
   /** Back to a cold, restartable state. Everything derived is cleared by the
    *  listeners; this clears the clock. */
   async reset(): Promise<void> {
+    this.epoch += 1
     this.generation += 1
     this.teardown()
     this.clock.t = 0
@@ -306,6 +347,7 @@ export class SimulationEngine {
   async step(): Promise<void> {
     const { status } = this.snapshot
     if (status !== 'paused' && status !== 'stopped' && status !== 'completed') return
+    this.epoch += 1
     const landed = await this.transport?.stepOnce()
     if (this.transport?.kind === 'LOCAL') {
       // The local model owns its clock, so the engine moves it: one 1 Hz
