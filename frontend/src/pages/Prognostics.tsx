@@ -14,7 +14,14 @@ import { api } from '../services/api'
 import { useTwin } from '../store/useTwin'
 import { HealthTrend } from '../components/charts/Charts'
 import {
-  Badge, Empty, Kv, Meter, Note, PageHead, Stat, StatusBadge, fmt, pct, signed,
+  Badge,
+  Empty,
+  Meter,
+  PageHead,
+  Stat,
+  StatusBadge,
+  fmt,
+  signed,
 } from '../components/ui/Primitives'
 
 export default function Prognostics() {
@@ -82,7 +89,7 @@ export default function Prognostics() {
 
         <section className="panel">
           <header className="panel__head">
-            <TrendingDown size={13} color={decline < 0 ? 'var(--warn)' : 'var(--ok)'} />
+            <TrendingDown size={13} color={decline < 0 ? 'var(--warn-ink)' : 'var(--ok-ink)'} />
             <h2 className="panel__title">Degradation rate</h2>
           </header>
           <div className="panel__body">
@@ -112,7 +119,7 @@ export default function Prognostics() {
 
         <section className="panel panel--glow">
           <header className="panel__head">
-            <Clock size={13} color="var(--accent)" />
+            <Clock size={13} color="var(--accent-ink)" />
             <h2 className="panel__title">Remaining useful life</h2>
             <span className="panel__spacer" />
             <Badge tone="caution">PROTOTYPE / RESEARCH MODE</Badge>
@@ -152,42 +159,15 @@ export default function Prognostics() {
         </section>
       </div>
 
-      <div className="grid" style={{ gridTemplateColumns: 'minmax(0, 1.4fr) minmax(0, 1fr)', marginBottom: 16 }}>
-        <section className="panel">
-          <header className="panel__head">
-            <h2 className="panel__title">Health trend across sorties</h2>
-                      </header>
-          <div className="panel__body panel__body--tight">
-            {trend.length > 1 ? <HealthTrend points={trend} height={210} /> : <Empty label="Collecting flight history" />}
-          </div>
-        </section>
-
-        <section className="panel">
-          <header className="panel__head">
-            <h2 className="panel__title">Why no hours-remaining figure</h2>
-            <span className="panel__spacer" />
-            <Badge tone="caution">HONEST LIMIT</Badge>
-          </header>
-          <div className="panel__body">
-            <div className="row row--tight row--wrap">
-              <Badge tone="info">P(RUL &gt; 2 DAYS)</Badge>
-              <Badge tone="caution">NO CONTINUOUS CURVE</Badge>
-            </div>
-            <div className="divider" />
-            <Kv
-              items={[
-                ['Benchmark task', prediction?.benchmark?.task ?? 'P(RUL > 2 days)'],
-                ['Dataset', prediction?.benchmark?.dataset ?? 'NGAFID-MC'],
-                ['Output', 'CALIBRATED PROBABILITY'],
-                ['Not produced', 'HOURS-TO-FAILURE CURVE'],
-              ]}
-            />
-          </div>
-          <footer className="panel__foot">
-            <span className="micro">{prediction?.airworthiness_notice ?? 'NOT CERTIFIED FOR AIRWORTHINESS DECISIONS'}</span>
-          </footer>
-        </section>
-      </div>
+      {/* The trend now has the row to itself. */}
+      <section className="panel" style={{ marginBottom: 16, marginRight: 372 }}>
+        <header className="panel__head">
+          <h2 className="panel__title">Health trend across sorties</h2>
+        </header>
+        <div className="panel__body panel__body--tight">
+          {trend.length > 1 ? <HealthTrend points={trend} height={210} /> : <Empty label="Collecting flight history" />}
+        </div>
+      </section>
 
       <section className="panel" style={{ marginRight: 372 }}>
         <header className="panel__head">
@@ -212,7 +192,7 @@ export default function Prognostics() {
                     <td className="mono">{row.live ? 'LIVE SORTIE' : `#${row.flight_id}`}</td>
                     <td>{row.profile_id}</td>
                     <td className="num">{fmt(row.health, 1)}</td>
-                    <td className="num" style={{ color: 'var(--residual)' }}>
+                    <td className="num" style={{ color: 'var(--residual-ink)' }}>
                       {row.peak_residual_c !== undefined ? `${signed(row.peak_residual_c, 1)} °C` : '—'}
                     </td>
                     <td><StatusBadge status={row.status} dot={false} /></td>

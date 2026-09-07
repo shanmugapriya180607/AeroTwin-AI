@@ -176,10 +176,10 @@ export default function MissionControl() {
       <div className="grid" style={{ gridTemplateColumns: 'minmax(0, 1.6fr) minmax(300px, 1fr)', marginBottom: 16 }}>
         <section className="panel" style={{ minHeight: 470 }}>
           <header className="panel__head">
-            <Compass size={13} color="var(--accent)" />
+            <Compass size={13} color="var(--accent-ink)" />
             <h2 className="panel__title">{sectorData?.name ?? 'TRAINING SECTOR ALPHA'}</h2>
             <span className="panel__spacer" />
-            <span className="mono" style={{ fontSize: 10.5, color: 'var(--ink-4)' }}>
+            <span className="mono" style={{ fontSize: 12, color: 'var(--ink-4)' }}>
               {position?.grid ?? '—'}
             </span>
           </header>
@@ -191,7 +191,7 @@ export default function MissionControl() {
         <div className="stack">
           <section className="panel">
             <header className="panel__head">
-              <Navigation size={13} color="var(--accent)" />
+              <Navigation size={13} color="var(--accent-ink)" />
               <h2 className="panel__title">Flight state</h2>
               <span className="panel__spacer" />
               <Badge tone="ok" dot live>{telemetry?.tick?.phase ?? '—'}</Badge>
@@ -217,7 +217,7 @@ export default function MissionControl() {
               <div style={{ marginTop: 12 }}>
                 <div className="row" style={{ justifyContent: 'space-between', marginBottom: 4 }}>
                   <span className="micro">MISSION PROGRESS</span>
-                  <span className="mono" style={{ fontSize: 11 }}>{pct(mission?.mission?.progress ?? 0, 1)}</span>
+                  <span className="mono" style={{ fontSize: 12.5 }}>{pct(mission?.mission?.progress ?? 0, 1)}</span>
                 </div>
                 <Meter value={(mission?.mission?.progress ?? 0) * 100} tall />
               </div>

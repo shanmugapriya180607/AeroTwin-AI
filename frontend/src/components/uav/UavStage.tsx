@@ -603,7 +603,7 @@ export function UavStage({ cardRef }: { cardRef: React.RefObject<HTMLElement> })
             placeItems: 'center',
             background: '#eef4fb',
             color: 'var(--ink-4)',
-            fontSize: 10,
+            fontSize: 11.5,
             letterSpacing: '0.2em',
           }}
         >

@@ -9,9 +9,11 @@
 import { useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  Activity, ArrowRight, Cpu, Gauge, Maximize2, Radio, ShieldAlert, Wrench,
+  Activity, ArrowRight, Cpu, FileSearch, Gauge, Maximize2, Radio, ShieldAlert,
+  TrendingDown, Wrench,
 } from 'lucide-react'
 import { useTwin } from '../store/useTwin'
+import { HeroBackdrop } from '../components/brand/HeroBackdrop'
 import { PipelineFlow } from '../components/twin/PipelineFlow'
 import { STORY_BEATS } from '../components/demo/DemoStory'
 import { CylinderBank } from '../components/engine/CylinderBank'
@@ -20,6 +22,20 @@ import {
   Badge, Empty, Kv, Meter, Note, PageHead, ProvenanceTag, Stat, StatusBadge,
   fmt, pct, signed,
 } from '../components/ui/Primitives'
+
+/**
+ * What the product claims to do, and where each claim is answered.
+ *
+ * Four verbs rather than a paragraph: a reader who has just arrived should be
+ * able to take in the scope of the system in one glance and then go straight
+ * to whichever part of it they came for.
+ */
+const CAPABILITIES = [
+  { verb: 'Detect', what: 'Abnormal residual patterns', to: '/anomalies', icon: ShieldAlert },
+  { verb: 'Locate', what: 'The affected cylinder', to: '/engine', icon: Cpu },
+  { verb: 'Predict', what: 'Degradation and RUL', to: '/prognostics', icon: TrendingDown },
+  { verb: 'Explain', what: 'The evidence behind it', to: '/maintenance', icon: FileSearch },
+] as const
 
 export default function CommandCenter() {
   const telemetry = useTwin((s) => s.telemetry)
@@ -67,7 +83,8 @@ export default function CommandCenter() {
   return (
     <>
       <PageHead
-        title="Command Center"
+        title="AeroTwin"
+        sub="Residual-driven digital twin for MALE UAV piston engines."
         actions={
           <div className="row row--tight">
             {mode === 'DEMO' && <Badge tone="demo" dot live>LOCAL DEMO FEED</Badge>}
@@ -85,6 +102,12 @@ export default function CommandCenter() {
 
       {/* ---- hero: the aircraft, and what this system is for -------------- */}
       <section className="hero">
+        {/* The environment this aircraft actually operates in, behind the
+            copy. Drawn, themed, and covered by a scrim so the headline's
+            contrast never depends on the picture. */}
+        <HeroBackdrop />
+        <div className="hero__scrim" aria-hidden />
+
         <div className="hero__left">
           <span className="hero__eyebrow">
             <i className="dot dot--live" style={{ background: 'var(--accent)' }} />
@@ -100,11 +123,23 @@ export default function CommandCenter() {
               <Maximize2 size={13} strokeWidth={2} />
               ENTER MISSION
             </button>
-            <Link className="hero__secondary" to="/twin">
-              VIEW DIGITAL TWIN
+            <Link className="hero__secondary" to="/telemetry">
+              LIVE MONITORING
               <ArrowRight size={13} />
             </Link>
           </div>
+
+          <ul className="caps">
+            {CAPABILITIES.map((cap) => (
+              <li key={cap.verb}>
+                <Link to={cap.to} className="caps__item">
+                  <cap.icon size={15} strokeWidth={1.9} />
+                  <span className="caps__verb">{cap.verb}</span>
+                  <span className="caps__what">{cap.what}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
         </div>
 
         <div className="hero__right">
@@ -127,7 +162,7 @@ export default function CommandCenter() {
             </div>
             <div className="hero__stat">
               <span className="hero__stat-k">Twin sync</span>
-              <span className="hero__stat-v" style={{ color: 'var(--accent)' }}>
+              <span className="hero__stat-v" style={{ color: 'var(--accent-ink)' }}>
                 {fmt(engine?.sync_pct, 1)}<small>%</small>
               </span>
             </div>
@@ -150,7 +185,7 @@ export default function CommandCenter() {
         {/* engine health */}
         <section className="panel panel--glow">
           <header className="panel__head">
-            <Gauge size={13} color="var(--accent)" />
+            <Gauge size={13} color="var(--accent-ink)" />
             <h2 className="panel__title">Engine health</h2>
             <span className="panel__spacer" />
             <StatusBadge status={engine?.status} />
@@ -177,7 +212,7 @@ export default function CommandCenter() {
         {/* digital twin */}
         <section className="panel">
           <header className="panel__head">
-            <Cpu size={13} color="var(--accent)" />
+            <Cpu size={13} color="var(--accent-ink)" />
             <h2 className="panel__title">Digital twin</h2>
             <span className="panel__spacer" />
             <Badge tone={(engine?.sync_pct ?? 0) > 90 ? 'info' : 'caution'} dot live>
@@ -207,7 +242,7 @@ export default function CommandCenter() {
             />
           </div>
           <footer className="panel__foot">
-            <Link to="/twin" className="row row--tight" style={{ color: 'var(--accent)', fontSize: 'var(--t-small)' }}>
+            <Link to="/twin" className="row row--tight" style={{ color: 'var(--accent-ink)', fontSize: 'var(--t-small)' }}>
               Open digital twin <ArrowRight size={12} />
             </Link>
           </footer>
@@ -216,7 +251,7 @@ export default function CommandCenter() {
         {/* active anomalies */}
         <section className={`panel ${top && !top.abstained && top.severity === 'HIGH' ? 'panel--crit' : ''}`}>
           <header className="panel__head">
-            <ShieldAlert size={13} color={top && !top.abstained ? 'var(--crit)' : 'var(--ink-4)'} />
+            <ShieldAlert size={13} color={top && !top.abstained ? 'var(--crit-ink)' : 'var(--ink-4)'} />
             <h2 className="panel__title">Active anomalies</h2>
             <span className="panel__spacer" />
             <Badge tone={engine?.anomaly_count ? 'crit' : 'ok'}>{engine?.anomaly_count ?? 0}</Badge>
@@ -248,7 +283,7 @@ export default function CommandCenter() {
             </div>
           </div>
           <footer className="panel__foot">
-            <Link to="/anomalies" className="row row--tight" style={{ color: 'var(--accent)', fontSize: 'var(--t-small)' }}>
+            <Link to="/anomalies" className="row row--tight" style={{ color: 'var(--accent-ink)', fontSize: 'var(--t-small)' }}>
               Why was this generated? <ArrowRight size={12} />
             </Link>
           </footer>
@@ -257,7 +292,7 @@ export default function CommandCenter() {
         {/* mission status */}
         <section className="panel">
           <header className="panel__head">
-            <Radio size={13} color="var(--accent)" />
+            <Radio size={13} color="var(--accent-ink)" />
             <h2 className="panel__title">Mission status</h2>
             <span className="panel__spacer" />
             <Badge tone="info">{mission?.mission?.status ?? '—'}</Badge>
@@ -273,7 +308,7 @@ export default function CommandCenter() {
             </div>
             <div className="row" style={{ justifyContent: 'space-between', marginBottom: 5 }}>
               <span className="micro">MISSION PROGRESS</span>
-              <span className="mono" style={{ fontSize: 11 }}>
+              <span className="mono" style={{ fontSize: 12.5 }}>
                 {pct(mission?.mission?.progress ?? 0, 1)}
               </span>
             </div>
@@ -297,7 +332,7 @@ export default function CommandCenter() {
       <div className="grid" style={{ gridTemplateColumns: 'minmax(0, 1.55fr) minmax(0, 1fr)', marginBottom: 16 }}>
         <section className="panel">
           <header className="panel__head">
-            <Activity size={13} color="var(--accent)" />
+            <Activity size={13} color="var(--accent-ink)" />
             <h2 className="panel__title">Expected vs actual · CHT {selected}</h2>
                         <span className="panel__spacer" />
             <Badge tone="residual">RESIDUAL = ACTUAL − EXPECTED</Badge>
@@ -309,7 +344,7 @@ export default function CommandCenter() {
                 <div className="row" style={{ margin: '4px 0 2px' }}>
                   <span className="micro">RESIDUAL</span>
                   <span className="spacer" />
-                  <span className="mono" style={{ fontSize: 11, color: 'var(--residual)' }}>
+                  <span className="mono" style={{ fontSize: 12.5, color: 'var(--residual-ink)' }}>
                     {signed(residuals?.channels?.[chtKey]?.residual, 2)} °C · drift{' '}
                     {signed(residuals?.channels?.[chtKey]?.ewma, 2)} °C
                   </span>
@@ -333,7 +368,7 @@ export default function CommandCenter() {
               {advisory ? (
                 <>
                   <div className="row row--tight">
-                    <Wrench size={13} color="var(--warn)" />
+                    <Wrench size={13} color="var(--warn-ink)" />
                     <span className="label" style={{ color: 'var(--ink-2)' }}>{advisory.priority_label}</span>
                     <span className="spacer" />
                     <Badge tone={advisory.severity === 'HIGH' ? 'crit' : 'warn'}>{advisory.severity}</Badge>
@@ -348,7 +383,7 @@ export default function CommandCenter() {
             </div>
           </div>
           <footer className="panel__foot">
-            <Link to="/maintenance" className="row row--tight" style={{ color: 'var(--accent)', fontSize: 'var(--t-small)' }}>
+            <Link to="/maintenance" className="row row--tight" style={{ color: 'var(--accent-ink)', fontSize: 'var(--t-small)' }}>
               Maintenance intelligence <ArrowRight size={12} />
             </Link>
           </footer>
@@ -369,12 +404,6 @@ export default function CommandCenter() {
         </div>
       </section>
 
-      <div className="row row--tight row--wrap" style={{ marginTop: 4 }}>
-        <Badge tone="real">VALIDATED · PISTON ENGINE DATA</Badge>
-        <Badge tone="demo">SIMULATED · MALE UAV MISSION</Badge>
-        <Badge tone="caution">RESEARCH PROTOTYPE</Badge>
-        <Badge tone="caution">NOT CERTIFIED</Badge>
-      </div>
     </>
   )
 }

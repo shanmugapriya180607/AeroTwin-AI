@@ -250,7 +250,7 @@ export function BootSequence({ onDone, onReplay }: { onDone: () => void; onRepla
                       {done ? <Check size={12} strokeWidth={2.4} /> : active ? '›' : '·'}
                     </span>
                     {step.label}
-                    {done && <span style={{ marginLeft: 'auto', color: 'var(--ok)' }}>OK</span>}
+                    {done && <span style={{ marginLeft: 'auto', color: 'var(--ok-ink)' }}>OK</span>}
                   </motion.div>
                 )
               })}

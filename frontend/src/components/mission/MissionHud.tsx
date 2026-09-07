@@ -84,19 +84,19 @@ export function MissionHud() {
         <div style={{ width: 1, height: 22, background: 'var(--hairline-strong)' }} />
         <div className="stat stat--sm">
           <span className="stat__k">Mission</span>
-          <span className="stat__v" style={{ fontSize: 13 }}>{mission?.mission?.id ?? 'ISR-047'}</span>
+          <span className="stat__v" style={{ fontSize: 14 }}>{mission?.mission?.id ?? 'ISR-047'}</span>
         </div>
         <div className="stat stat--sm">
           <span className="stat__k">UAV</span>
-          <span className="stat__v" style={{ fontSize: 13 }}>{mission?.mission?.uav_id ?? 'UAV-01'}</span>
+          <span className="stat__v" style={{ fontSize: 14 }}>{mission?.mission?.uav_id ?? 'UAV-01'}</span>
         </div>
         <div className="stat stat--sm">
           <span className="stat__k">Phase</span>
-          <span className="stat__v" style={{ fontSize: 13 }}>{telemetry?.tick?.phase ?? '—'}</span>
+          <span className="stat__v" style={{ fontSize: 14 }}>{telemetry?.tick?.phase ?? '—'}</span>
         </div>
         <div className="stat stat--sm">
           <span className="stat__k">Sector</span>
-          <span className="stat__v" style={{ fontSize: 13 }}>{mission?.mission?.sector ?? 'TRAINING SECTOR ALPHA'}</span>
+          <span className="stat__v" style={{ fontSize: 14 }}>{mission?.mission?.sector ?? 'TRAINING SECTOR ALPHA'}</span>
         </div>
         <span className="spacer" />
         {mode === 'DEMO' && <Badge tone="demo" dot live>DEMO FEED</Badge>}
@@ -110,34 +110,34 @@ export function MissionHud() {
         {/* flight state */}
         <div className="hud-panel" style={{ minWidth: 268 }}>
           <div className="row" style={{ marginBottom: 8 }}>
-            <Gauge size={13} color="var(--accent)" />
+            <Gauge size={13} color="var(--accent-ink)" />
             <span className="label" style={{ color: 'var(--ink-3)' }}>Flight state</span>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 18px' }}>
             <div className="stat stat--sm">
               <span className="stat__k">Altitude</span>
-              <span className="stat__v" style={{ fontSize: 17 }}>
+              <span className="stat__v" style={{ fontSize: 18 }}>
                 <LiveNumber read={() => flightDynamics.state.altitudeFt} />
                 <span className="stat__u">ft</span>
               </span>
             </div>
             <div className="stat stat--sm">
               <span className="stat__k">IAS</span>
-              <span className="stat__v" style={{ fontSize: 17 }}>
+              <span className="stat__v" style={{ fontSize: 18 }}>
                 <LiveNumber read={() => flightDynamics.state.speedKt} />
                 <span className="stat__u">kt</span>
               </span>
             </div>
             <div className="stat stat--sm">
               <span className="stat__k">Heading</span>
-              <span className="stat__v" style={{ fontSize: 17 }}>
+              <span className="stat__v" style={{ fontSize: 18 }}>
                 <LiveNumber read={() => ((flightDynamics.state.heading * 180) / Math.PI + 360) % 360} />
                 <span className="stat__u">°</span>
               </span>
             </div>
             <div className="stat stat--sm">
               <span className="stat__k">Bank</span>
-              <span className="stat__v" style={{ fontSize: 17 }}>
+              <span className="stat__v" style={{ fontSize: 18 }}>
                 <LiveNumber read={() => (flightDynamics.state.bank * 180) / Math.PI} digits={1} />
                 <span className="stat__u">°</span>
               </span>
@@ -148,7 +148,7 @@ export function MissionHud() {
         {/* engine state */}
         <div className="hud-panel" style={{ minWidth: 250 }}>
           <div className="row" style={{ marginBottom: 8 }}>
-            <Cpu size={13} color="var(--accent)" />
+            <Cpu size={13} color="var(--accent-ink)" />
             <span className="label" style={{ color: 'var(--ink-3)' }}>Propulsion</span>
             <span className="spacer" />
             <StatusBadge status={engine?.status} />
@@ -158,11 +158,11 @@ export function MissionHud() {
             <span
               className="stat__v"
               style={{
-                fontSize: 26,
+                fontSize: 28,
                 color:
-                  (engine?.health_index ?? 100) >= 90 ? 'var(--ok)'
-                    : (engine?.health_index ?? 100) >= 78 ? 'var(--caution)'
-                      : 'var(--warn)',
+                  (engine?.health_index ?? 100) >= 90 ? 'var(--ok-ink)'
+                    : (engine?.health_index ?? 100) >= 78 ? 'var(--caution-ink)'
+                      : 'var(--warn-ink)',
               }}
             >
               {fmt(engine?.health_index, 1)}
@@ -178,13 +178,13 @@ export function MissionHud() {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '9px 16px', marginTop: 11 }}>
             <div className="stat stat--sm">
               <span className="stat__k">RPM</span>
-              <span className="stat__v" style={{ fontSize: 15 }}>
+              <span className="stat__v" style={{ fontSize: 16 }}>
                 {Math.round(telemetry?.tick?.channels?.rpm ?? 0).toLocaleString()}
               </span>
             </div>
             <div className="stat stat--sm">
               <span className="stat__k">Power</span>
-              <span className="stat__v" style={{ fontSize: 15 }}>
+              <span className="stat__v" style={{ fontSize: 16 }}>
                 {fmt(engine?.power_pct, 0)}<span className="stat__u">%</span>
               </span>
             </div>
@@ -196,16 +196,16 @@ export function MissionHud() {
           <div className="row" style={{ marginBottom: 8 }}>
             <span className="label" style={{ color: 'var(--ink-3)' }}>Mission progress</span>
             <span className="spacer" />
-            <span className="mono" style={{ fontSize: 11, color: 'var(--ink-3)' }}>
+            <span className="mono" style={{ fontSize: 12.5, color: 'var(--ink-3)' }}>
               NEXT · {flightDynamics.activeLeg?.id ?? '—'}
             </span>
           </div>
           <Meter value={(mission?.mission?.progress ?? 0) * 100} tall />
           <div className="row" style={{ marginTop: 9, justifyContent: 'space-between' }}>
-            <span className="mono" style={{ fontSize: 11, color: 'var(--ink-3)' }}>
+            <span className="mono" style={{ fontSize: 12.5, color: 'var(--ink-3)' }}>
               T+ {clock(mission?.mission?.elapsed_s)}
             </span>
-            <span className="mono" style={{ fontSize: 11, color: 'var(--ink-4)' }}>
+            <span className="mono" style={{ fontSize: 12.5, color: 'var(--ink-4)' }}>
               {((mission?.mission?.progress ?? 0) * 100).toFixed(1)}% · {mission?.mission?.position?.grid ?? '—'}
             </span>
           </div>
@@ -223,7 +223,7 @@ export function MissionHud() {
               <Badge tone={top.severity === 'HIGH' ? 'crit' : 'warn'} dot live>
                 {top.title}
               </Badge>
-              <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>{top.summary}</span>
+              <span style={{ fontSize: 12.5, color: 'var(--ink-3)' }}>{top.summary}</span>
             </div>
           )}
         </div>
@@ -231,7 +231,7 @@ export function MissionHud() {
         {/* camera modes */}
         <div className="hud-panel">
           <div className="row" style={{ marginBottom: 8 }}>
-            <Camera size={13} color="var(--accent)" />
+            <Camera size={13} color="var(--accent-ink)" />
             <span className="label" style={{ color: 'var(--ink-3)' }}>Camera</span>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -242,7 +242,7 @@ export function MissionHud() {
                 onClick={() => setCameraMode(m)}
                 style={{ justifyContent: 'flex-start' }}
               >
-                <span style={{ color: 'var(--ink-5)', fontSize: 9 }}>{i + 1}</span>
+                <span style={{ color: 'var(--ink-3)', fontSize: 11 }}>{i + 1}</span>
                 {m}
               </button>
             ))}

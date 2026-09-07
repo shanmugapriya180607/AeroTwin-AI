@@ -2,6 +2,21 @@
 *::before,
 *::after { box-sizing: border-box; }
 
+/* A theme change repaints every surface at once. Easing the two properties
+   that carry the change turns it from a flash into a dip. Anything that is
+   already animating its own colour is left alone. */
+:root.theme-shifting body,
+:root.theme-shifting .panel,
+:root.theme-shifting .topbar,
+:root.theme-shifting .rail,
+:root.theme-shifting .tile,
+:root.theme-shifting .metrics__cell,
+:root.theme-shifting .alert,
+:root.theme-shifting .cyl {
+  transition: background-color 260ms var(--ease), color 260ms var(--ease),
+              border-color 260ms var(--ease);
+}
+
 html, body, #root {
   height: 100%;
   margin: 0;
@@ -9,14 +24,12 @@ html, body, #root {
 }
 
 body {
-  background:
-    radial-gradient(1300px 780px at 76% -14%, rgba(10, 167, 194, 0.10), transparent 62%),
-    radial-gradient(1000px 660px at 6% 108%, rgba(10, 110, 214, 0.07), transparent 60%),
-    linear-gradient(178deg, #fbfdff 0%, var(--bg) 46%, #eaf1fa 100%);
+  /* Both halves of the wash are themed - see --body-bg in tokens.css. */
+  background: var(--body-bg);
   color: var(--ink);
   font-family: var(--sans);
   font-size: var(--t-body);
-  line-height: 1.5;
+  line-height: 1.55;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
   overflow: hidden;
@@ -29,8 +42,8 @@ body::before {
   inset: 0;
   pointer-events: none;
   background-image:
-    linear-gradient(rgba(11, 26, 46, 0.022) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(11, 26, 46, 0.022) 1px, transparent 1px);
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
   background-size: 46px 46px;
   z-index: 0;
 }
@@ -40,7 +53,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 button { cursor: pointer; background: none; border: none; padding: 0; }
 a { color: inherit; text-decoration: none; }
 
-::selection { background: rgba(10, 110, 214, 0.18); }
+::selection { background: var(--accent-soft); }
 
 ::-webkit-scrollbar { width: 9px; height: 9px; }
 ::-webkit-scrollbar-track { background: transparent; }
@@ -68,11 +81,58 @@ a { color: inherit; text-decoration: none; }
   letter-spacing: var(--track);
   text-transform: uppercase;
   color: var(--ink-3);
-  font-weight: 600;
+  font-weight: 700;
 }
 
+/* The two dimming utilities stay *readable* dim: they step down the ramp one
+   and two tiers, not out of it. Nothing in the console is decoration. */
 .dim { color: var(--ink-3); }
 .dimmer { color: var(--ink-4); }
+
+/* --------------------------------------------------------------------------
+   Type scale
+
+   One class per level of the hierarchy, so a heading's rank is set in one
+   place rather than re-guessed at each call site. These name the levels the
+   layout already uses; they do not introduce new ones.
+   -------------------------------------------------------------------------- */
+
+.t-page {
+  font-size: var(--t-page);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+  color: var(--ink);
+}
+
+.t-section {
+  font-size: var(--t-section);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1.25;
+  color: var(--ink);
+}
+
+.t-card {
+  font-size: var(--t-lead);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.3;
+  color: var(--ink);
+}
+
+.t-value {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--t-num);
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  line-height: 1.15;
+  color: var(--ink);
+}
+
+.t-body { font-size: var(--t-body); color: var(--ink-2); line-height: 1.6; }
+.t-help { font-size: var(--t-small); color: var(--ink-3); line-height: 1.55; }
 
 @keyframes at-pulse {
   0%, 100% { opacity: 1; }

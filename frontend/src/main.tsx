@@ -4,12 +4,14 @@ import { BrowserRouter } from 'react-router-dom'
 import App from './App'
 import { simClock, simulation } from './simulation'
 import { useTwin } from './store/useTwin'
+import { bootTheme } from './store/useSettings'
 import './styles/tokens.css'
 import './styles/base.css'
 import './styles/components.css'
 import './styles/cinematic.css'
 import './styles/showcase.css'
 import './styles/theatre.css'
+import './styles/how.css'
 
 /**
  * A diagnostic handle on the running console.
@@ -29,6 +31,9 @@ declare global {
   }
 }
 window.__aerotwin = { simulation, simClock, store: useTwin }
+
+/* Before the first paint, so a dark-theme operator never sees a white flash. */
+bootTheme()
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

@@ -1,10 +1,13 @@
-import { NavLink, useLocation, useNavigate } from 'react-router-dom'
+import { NavLink, useLocation } from 'react-router-dom'
 import {
-  Activity, AlertTriangle, Boxes, Cpu, Database, GaugeCircle, LayoutGrid,
-  FolderSearch, LineChart, Map, Plane, PlayCircle, RotateCcw, ShieldCheck, Wrench,
+  Activity, AlertTriangle, Cpu, Database, FileText, GaugeCircle, History,
+  LayoutGrid, FolderSearch, LineChart, Map, Moon, PlayCircle, ShieldCheck,
+  SlidersHorizontal, Sun, Wrench,
 } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useTwin } from '../../store/useTwin'
+import { useSettings } from '../../store/useSettings'
+import { AlertBell, VoiceToggle } from '../alerts/AlertCenter'
 import { Badge } from '../ui/Primitives'
 import { Wordmark } from '../brand/Wordmark'
 
@@ -16,26 +19,51 @@ interface NavLinkItem {
   badge?: boolean
 }
 
+interface NavGroup {
+  group: string
+}
+
 interface NavSeparator {
   sep: true
 }
 
-export const NAV: Array<NavLinkItem | NavSeparator> = [
-  { to: '/dashboard', label: 'COMMAND CENTER', icon: LayoutGrid, end: true },
-  { to: '/twin', label: 'DIGITAL TWIN', icon: Cpu },
-  { to: '/engine', label: 'ENGINE HEALTH', icon: GaugeCircle },
-  { to: '/telemetry', label: 'TELEMETRY', icon: Activity },
-  { to: '/anomalies', label: 'ANOMALIES', icon: AlertTriangle, badge: true },
-  { to: '/prognostics', label: 'PROGNOSTICS', icon: LineChart },
-  { to: '/maintenance', label: 'MAINTENANCE', icon: Wrench },
-  { sep: true },
-  { to: '/simulation', label: 'MISSION SIMULATION', icon: PlayCircle },
-  { to: '/mission', label: 'MISSION CONTROL', icon: Map },
-  { sep: true },
-  { to: '/architecture', label: 'ARCHITECTURE', icon: Boxes },
-  { to: '/data', label: 'DATA & MODELS', icon: Database },
-  { to: '/dataset', label: 'DATASET', icon: FolderSearch },
-  { to: '/validation', label: 'VALIDATION', icon: ShieldCheck },
+type NavEntry = NavLinkItem | NavGroup | NavSeparator
+
+/**
+ * The sidebar.
+ *
+ * The first nine are the operator's working set, in the order an engineer
+ * moves through a fault: where am I, what is the engine doing, how well is it,
+ * what has deviated, what did the flight look like, what would happen if,
+ * what should be done, what do I hand over, how do I want this to behave.
+ *
+ * The rest are reference screens - the twin's own internals, the corpus, the
+ * validation harness. They are one group down rather than gone, because
+ * demoting a screen and deleting it are not the same thing.
+ *
+ * System Architecture is deliberately absent. The route still resolves and the
+ * page still renders - it is linked from Data & Models - but it documents how
+ * the product is built rather than telling an operator anything about this
+ * aircraft, so it does not earn a permanent seat in the navigation.
+ */
+export const NAV: NavEntry[] = [
+  { to: '/dashboard', label: 'Home', icon: LayoutGrid, end: true },
+  { to: '/telemetry', label: 'Live Monitoring', icon: Activity },
+  { to: '/engine', label: 'Engine Health', icon: GaugeCircle },
+  { to: '/anomalies', label: 'Diagnostics', icon: AlertTriangle, badge: true },
+  { to: '/replay', label: 'Flight Replay', icon: History },
+  { to: '/simulation', label: 'Mission Simulation', icon: PlayCircle },
+  { to: '/maintenance', label: 'Maintenance Advisor', icon: Wrench },
+  { to: '/reports', label: 'Reports', icon: FileText },
+  { to: '/settings', label: 'Settings', icon: SlidersHorizontal },
+
+  { group: 'Reference' },
+  { to: '/twin', label: 'Digital Twin', icon: Cpu },
+  { to: '/prognostics', label: 'Prognostics · RUL', icon: LineChart },
+  { to: '/mission', label: 'Mission Control', icon: Map },
+  { to: '/data', label: 'Data & Models', icon: Database },
+  { to: '/dataset', label: 'Dataset', icon: FolderSearch },
+  { to: '/validation', label: 'Validation', icon: ShieldCheck },
 ]
 
 export function NavRail() {
@@ -47,17 +75,30 @@ export function NavRail() {
     <nav className="rail shell__rail" aria-label="Primary">
       {NAV.map((item, i) => {
         if ('sep' in item) return <div key={`sep-${i}`} className="rail__sep" />
+        if ('group' in item) {
+          return (
+            <div key={`group-${i}`} className="rail__group">
+              <span className="rail__sep" aria-hidden />
+              {item.group}
+            </div>
+          )
+        }
         const Icon = item.icon
-        const active = item.end ? location.pathname === item.to : location.pathname.startsWith(item.to)
+        const active = item.end
+          ? location.pathname === item.to
+          : location.pathname.startsWith(item.to)
         return (
           <NavLink
             key={item.to}
             to={item.to}
             className={`rail__item ${active ? 'rail__item--active' : ''}`}
-            aria-label={item.label}
+            aria-current={active ? 'page' : undefined}
           >
-            <Icon size={17} strokeWidth={1.6} />
-            {item.badge && count > 0 && <span className="rail__badge">{count}</span>}
+            <Icon size={17} strokeWidth={1.7} aria-hidden />
+            <span className="rail__label">{item.label}</span>
+            {item.badge && count > 0 && (
+              <span className="rail__badge" aria-label={`${count} active`}>{count}</span>
+            )}
             <span className="rail__tip">{item.label}</span>
           </NavLink>
         )
@@ -66,17 +107,43 @@ export function NavRail() {
   )
 }
 
+/**
+ * The top bar.
+ *
+ * It answers four questions and stops: is the link up, does the twin agree
+ * with the engine, is the engine well, and is anything asking for me. The two
+ * shortcut buttons that used to sit here - replay the film, open the airframe -
+ * moved to Settings, where somebody looking for them will actually think to
+ * look, and where they are not competing for width with the status of a
+ * running aircraft.
+ */
 export function TopBar({ actions }: { actions?: ReactNode }) {
   const status = useTwin((s) => s.status)
   const telemetry = useTwin((s) => s.telemetry)
+  const alerts = useTwin((s) => s.alerts)
   const mission = useTwin((s) => s.mission)
   const mode = useTwin((s) => s.mode)
-  const replayIntro = useTwin((s) => s.replayIntro)
-  const navigate = useNavigate()
+  const theme = useSettings((s) => s.theme)
+  const toggleTheme = useSettings((s) => s.toggleTheme)
 
   const datalink = telemetry?.datalink
   const twinState = status?.twin?.state ?? datalink?.twin_state ?? '—'
   const syncPct = telemetry?.engine?.sync_pct ?? status?.twin?.sync_pct
+  const engineState = alerts?.engine_state ?? null
+
+  /* CONNECTING is a third state and has to look like one. Calling it OFFLINE
+     while the sockets are still opening would put the console into local mode
+     in the operator's head a second before it actually gets there. */
+  const link =
+    mode === 'CONNECTING' ? { tone: 'info' as const, label: 'CONNECTING' }
+      : mode === 'LIVE' ? { tone: 'ok' as const, label: 'ONLINE' }
+        : { tone: 'demo' as const, label: 'OFFLINE · LOCAL MODE' }
+
+  const engineTone =
+    engineState === null ? 'neutral'
+      : /CRIT|FAULT/i.test(engineState) ? 'crit'
+        : /DEGRAD|WARN/i.test(engineState) ? 'warn'
+          : /CAUTION|WATCH/i.test(engineState) ? 'caution' : 'ok'
 
   return (
     <header className="topbar shell__topbar">
@@ -106,32 +173,35 @@ export function TopBar({ actions }: { actions?: ReactNode }) {
       <span className="topbar__spacer" />
 
       <div className="topbar__status">
-        <Badge tone={mode === 'DEMO' ? 'demo' : status?.system === 'ONLINE' ? 'ok' : 'caution'} dot live>
-          {mode === 'DEMO' ? 'DEMO MODE' : status?.system ?? 'CONNECTING'}
+        <Badge tone={link.tone} dot live={mode !== 'DEMO'}>
+          {link.label}
         </Badge>
+
         <Badge tone={datalink?.connected === false ? 'crit' : 'ok'} dot live={datalink?.connected !== false}>
-          {datalink?.connected === false ? 'DATA LINK LOST' : 'DATA LINK CONNECTED'}
+          {datalink?.connected === false ? 'DATA LINK LOST' : 'DATA LINK'}
         </Badge>
+
         <Badge tone={twinState.startsWith('SYNCHRON') ? 'info' : 'caution'} dot>
           TWIN {twinState}
           {syncPct !== undefined && syncPct !== null ? ` · ${syncPct.toFixed(1)}%` : ''}
         </Badge>
-        {/* The full first-entry sequence, on demand. */}
+
+        {engineState && (
+          <Badge tone={engineTone as never} dot>
+            ENGINE {engineState}
+          </Badge>
+        )}
+
+        <AlertBell />
+        <VoiceToggle />
+
         <button
           className="btn btn--icon"
-          onClick={() => { replayIntro(); navigate('/intro') }}
-          title="Replay the introduction"
-          aria-label="Replay the introduction"
+          onClick={toggleTheme}
+          title={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+          aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
         >
-          <RotateCcw size={13} />
-        </button>
-        <button
-          className="btn btn--icon"
-          onClick={() => navigate('/uav')}
-          title="Open the UAV showcase"
-          aria-label="Open the UAV showcase"
-        >
-          <Plane size={13} />
+          {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
         </button>
       </div>
 

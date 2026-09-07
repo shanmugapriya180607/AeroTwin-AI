@@ -8,18 +8,27 @@
  */
 
 import { useEffect, useMemo, useState } from 'react'
-import { BookOpen, ShieldCheck, TriangleAlert } from 'lucide-react'
+import { ShieldCheck, TriangleAlert } from 'lucide-react'
 import { api } from '../services/api'
 import { liveOrSnapshot, snapshotAge } from '../services/reports'
-import { AXIS, CHART_BASE, EChart } from '../components/charts/EChart'
 import {
-  Badge, Empty, Loading, Meter, Metrics, PageHead, StatusRows, TagRow, fmt,
+  AXIS,
+  CHART_BASE,
+  EChart,
+  chartToken,
+  monoGutter,
+  useChartTheme,
+} from '../components/charts/EChart'
+import {
+  Badge,
+  Empty,
+  Meter,
+  Metrics,
+  PageHead,
+  StatusRows,
+  TagRow,
+  fmt,
 } from '../components/ui/Primitives'
-
-/** A limitation reduced to its verdict. The register keeps the detail. */
-const GAP_TONE: Record<string, 'crit' | 'warn' | 'caution'> = {
-  HIGH: 'crit', MEDIUM: 'warn', LOW: 'caution',
-}
 
 /**
  * A one-line reason, for the meta slot on a tag row.
@@ -55,6 +64,7 @@ export default function Validation() {
      bundled demo flights are a format sample and say so. */
   const corpusMode: string = data?.ngafid?.mode ?? 'DEMO'
 
+  const theme = useChartTheme()
   const reliabilityOption = useMemo(() => {
     const bins = report?.reliability ?? []
     if (!bins.length) return null
@@ -64,7 +74,7 @@ export default function Validation() {
       grid: { left: 46, right: 16, top: 18, bottom: 32 },
       legend: {
         show: true, top: 0, right: 0, itemWidth: 12, itemHeight: 2,
-        textStyle: { color: '#5a7089', fontSize: 9.5 },
+        textStyle: { color: chartToken('--ink-3', '#3d5471'), fontSize: 11 },
       },
       xAxis: {
         type: 'category',
@@ -73,7 +83,7 @@ export default function Validation() {
         name: 'STATED',
         nameLocation: 'middle',
         nameGap: 22,
-        nameTextStyle: { color: '#8496ac', fontSize: 9 },
+        nameTextStyle: { color: chartToken('--ink-3', '#3d5471'), fontSize: 11 },
       },
       yAxis: { type: 'value', min: 0, max: 1, ...AXIS },
       series: [
@@ -82,48 +92,51 @@ export default function Validation() {
           type: 'line',
           data: populated.map((b: any) => b.mean_confidence),
           showSymbol: false,
-          lineStyle: { color: '#b2c1d3', width: 1, type: 'dashed' },
+          lineStyle: { color: chartToken('--ink-5', '#b2c1d3'), width: 1, type: 'dashed' },
         },
         {
           name: 'OBSERVED',
           type: 'bar',
           data: populated.map((b: any) => b.observed_accuracy),
           barWidth: '52%',
-          itemStyle: { color: '#0a6ed6', borderRadius: [2, 2, 0, 0] },
+          itemStyle: { color: chartToken('--accent', '#0a6ed6'), borderRadius: [2, 2, 0, 0] },
         },
       ],
     }
-  }, [report])
+  }, [report, theme])
 
   const fidelityOption = useMemo(() => {
     const rows = report?.model_fidelity ?? []
     if (!rows.length) return null
     return {
       ...CHART_BASE,
-      grid: { left: 8, right: 42, top: 8, bottom: 8, containLabel: true },
+      grid: {
+        left: monoGutter(rows.map((r: any) => r.channel), 11),
+        right: 62, top: 8, bottom: 30, containLabel: false,
+      },
       tooltip: { ...CHART_BASE.tooltip, trigger: 'item' },
-      xAxis: { type: 'value', ...AXIS, name: 'P95 |ERR|', nameTextStyle: { color: '#8496ac', fontSize: 9 } },
+      xAxis: { type: 'value', ...AXIS, name: 'P95 |ERR|', nameTextStyle: { color: chartToken('--ink-3', '#3d5471'), fontSize: 11 } },
       yAxis: {
         type: 'category',
         data: rows.map((r: any) => r.channel).reverse(),
         ...AXIS,
         splitLine: { show: false },
-        axisLabel: { ...AXIS.axisLabel, fontSize: 9 },
+        axisLabel: { ...AXIS.axisLabel, fontSize: 11 },
       },
       series: [
         {
           type: 'bar',
           data: rows.map((r: any) => r.p95_abs_error).reverse(),
           barWidth: 8,
-          itemStyle: { color: '#7691b6', borderRadius: [0, 2, 2, 0] },
+          itemStyle: { color: chartToken('--expected', '#7691b6'), borderRadius: [0, 2, 2, 0] },
           label: {
-            show: true, position: 'right', color: '#5a7089', fontSize: 9,
+            show: true, position: 'right', color: chartToken('--ink-3', '#3d5471'), fontSize: 11,
             fontFamily: 'JetBrains Mono, monospace',
           },
         },
       ],
     }
-  }, [report])
+  }, [report, theme])
 
   return (
     <>
@@ -147,7 +160,7 @@ export default function Validation() {
       {/* ---- measured performance ----------------------------------------- */}
       <section className="panel panel--marked" style={{ marginBottom: 16 }}>
         <header className="panel__head">
-          <ShieldCheck size={13} color="var(--accent)" />
+          <ShieldCheck size={13} color="var(--accent-ink)" />
           <h2 className="panel__title">Measured</h2>
           <span className="panel__spacer" />
           {report && (
@@ -167,7 +180,7 @@ export default function Validation() {
                     <span className="micro">{metric.label}</span>
                     <div
                       className="mono"
-                      style={{ fontSize: 26, marginTop: 3, fontWeight: 600, color: 'var(--ink)' }}
+                      style={{ fontSize: 28, marginTop: 3, fontWeight: 600, color: 'var(--ink)' }}
                     >
                       {fmt(metric.value, 3)}
                     </div>
@@ -251,7 +264,7 @@ export default function Validation() {
       {/* ---- domain gap ---------------------------------------------------- */}
       <section className="panel" style={{ marginBottom: 16 }}>
         <header className="panel__head">
-          <TriangleAlert size={13} color="var(--caution)" />
+          <TriangleAlert size={13} color="var(--caution-ink)" />
           <h2 className="panel__title">Domain gap</h2>
           <span className="panel__spacer" />
           <Badge tone="real">{gap?.from ?? 'NGAFID-MC'}</Badge>
@@ -261,7 +274,7 @@ export default function Validation() {
         <div className="panel__body panel__body--tight">
           <div className="grid grid--2">
             <div>
-              <span className="micro" style={{ color: 'var(--ok)' }}>VALIDATED</span>
+              <span className="micro" style={{ color: 'var(--ok-ink)' }}>VALIDATED</span>
               <div className="stack stack--sm" style={{ marginTop: 8 }}>
                 {(gap?.transfers ?? []).map((item: any, i: number) => (
                   <TagRow
@@ -274,7 +287,7 @@ export default function Validation() {
               </div>
             </div>
             <div>
-              <span className="micro" style={{ color: 'var(--caution)' }}>LIMITATIONS</span>
+              <span className="micro" style={{ color: 'var(--caution-ink)' }}>LIMITATIONS</span>
               <div className="stack stack--sm" style={{ marginTop: 8 }}>
                 {(gap?.does_not_transfer ?? []).map((item: any, i: number) => (
                   <TagRow
@@ -289,94 +302,6 @@ export default function Validation() {
           </div>
         </div>
       </section>
-
-      {/* ---- limitations + corpus ------------------------------------------ */}
-      <div
-        className="grid"
-        style={{ gridTemplateColumns: 'minmax(0, 1.1fr) minmax(0, 1fr)', marginRight: 372 }}
-      >
-        <section className="panel">
-          <header className="panel__head">
-            <h2 className="panel__title">Limitations</h2>
-            <span className="panel__spacer" />
-            <Badge tone="caution">{(data?.limitations ?? []).length}</Badge>
-          </header>
-          <div className="panel__body panel__body--tight">
-            <div className="scroll-y" style={{ maxHeight: 300 }}>
-              <div className="stack stack--sm">
-                {(data?.limitations ?? []).map((item: any, i: number) => (
-                  <TagRow
-                    key={i}
-                    label={item.tag ?? reason(item.title ?? item.limitation ?? '')}
-                    state={item.state ?? String(item.severity ?? 'NOTED').toUpperCase()}
-                    tone={GAP_TONE[String(item.severity ?? '').toUpperCase()] ?? 'caution'}
-                    meta={item.severity}
-                  />
-                ))}
-                {!data?.limitations?.length &&
-                  (loaded ? <Empty label="UNAVAILABLE" /> : <Loading height={200} />)}
-              </div>
-            </div>
-            <div className="divider" />
-            <span className="micro">OUT OF SCOPE</span>
-            <div className="chip-list" style={{ marginTop: 8 }}>
-              {(data?.out_of_scope ?? []).slice(0, 8).map((item: any, i: number) => (
-                <Badge key={i} tone="neutral">{String(item.item).toUpperCase()}</Badge>
-              ))}
-            </div>
-          </div>
-          <footer className="panel__foot">
-            <span className="micro">{data?.airworthiness_notice}</span>
-          </footer>
-        </section>
-
-        <section className="panel">
-          <header className="panel__head">
-            <BookOpen size={13} color="var(--accent)" />
-            <h2 className="panel__title">Reference corpus</h2>
-            <span className="panel__spacer" />
-            <Badge tone="real">{dataset?.licence ?? 'CC-BY-4.0'}</Badge>
-          </header>
-          <div className="panel__body panel__body--tight">
-            <StatusRows
-              rows={[
-                { k: 'CORPUS', v: String(dataset?.id ?? 'NGAFID-MC') },
-                { k: 'FLIGHTS', v: (dataset?.flights ?? 28935).toLocaleString() },
-                { k: 'HOURS', v: (dataset?.flight_hours ?? 31177).toLocaleString() },
-                { k: 'CHANNELS', v: `${dataset?.sensors ?? 23} @ ${dataset?.sample_rate_hz ?? 1} HZ` },
-                {
-                  k: 'MAINT EVENTS',
-                  v: (dataset?.maintenance_events ?? 2111).toLocaleString(),
-                  tone: 'accent',
-                },
-                { k: 'ENGINE', v: String(dataset?.engine ?? 'LYCOMING IO-360').toUpperCase() },
-                { k: 'POWER', v: `${dataset?.rated_power_hp ?? 180} HP` },
-                { k: 'SIZE', v: `${dataset?.size_gb ?? 5.4} GB` },
-                {
-                  k: 'MOUNTED',
-                  v: corpusMode,
-                  tone: corpusMode === 'REAL' ? 'ok' : 'dim',
-                },
-              ]}
-            />
-            <div className="divider" />
-            <span className="micro">REJECTED</span>
-            <div className="stack stack--sm" style={{ marginTop: 8 }}>
-              {(data?.rejected_datasets ?? []).map((item: any, i: number) => (
-                <TagRow
-                  key={i}
-                  label={String(item.id).toUpperCase()}
-                  state={item.verdict ?? 'REJECTED'}
-                  tone="crit"
-                  meta={reason(item.reason ?? item.detail ?? item.why ?? '', 3)}
-                />
-              ))}
-              {!data?.rejected_datasets?.length &&
-                (loaded ? <Empty label="UNAVAILABLE" /> : <Loading height={140} />)}
-            </div>
-          </div>
-        </section>
-      </div>
     </>
   )
 }

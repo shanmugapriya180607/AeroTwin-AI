@@ -21,6 +21,7 @@ import { MissionHud } from './components/mission/MissionHud'
 import { BootSequence } from './components/cinematic/BootSequence'
 import { DemoControls } from './components/dashboard/DemoControls'
 import { DemoStory } from './components/demo/DemoStory'
+import { AlertFeed, AlertToasts } from './components/alerts/AlertCenter'
 import { Loading } from './components/ui/Primitives'
 
 const CommandCenter = lazy(() => import('./pages/CommandCenter'))
@@ -36,6 +37,9 @@ const Architecture = lazy(() => import('./pages/Architecture'))
 const DataModels = lazy(() => import('./pages/DataModels'))
 const Dataset = lazy(() => import('./pages/Dataset'))
 const Validation = lazy(() => import('./pages/Validation'))
+const FlightReplay = lazy(() => import('./pages/FlightReplay'))
+const Reports = lazy(() => import('./pages/Reports'))
+const Settings = lazy(() => import('./pages/Settings'))
 
 /**
  * Route change is a camera move, not a cut.
@@ -55,6 +59,9 @@ const ENTRY: Record<string, { x?: number; y?: number; scale?: number }> = {
   '/maintenance': { scale: 0.972 },
   '/simulation': { scale: 1.028 },
   '/mission': { scale: 1.035 },
+  '/replay': { y: 12 },
+  '/reports': { x: 22 },
+  '/settings': { x: 22 },
   '/architecture': { x: 22 },
   '/data': { x: 22 },
   '/dataset': { x: 22 },
@@ -158,6 +165,9 @@ export default function Console() {
                 <Route path="/data" element={<DataModels />} />
                 <Route path="/dataset" element={<Dataset />} />
                 <Route path="/validation" element={<Validation />} />
+                <Route path="/replay" element={<FlightReplay />} />
+                <Route path="/reports" element={<Reports />} />
+                <Route path="/settings" element={<Settings />} />
                 <Route path="*" element={<CommandCenter />} />
               </Routes>
             </PageFrame>
@@ -174,6 +184,12 @@ export default function Console() {
       <AnimatePresence>
         {flightMode === 'MISSION' && !storyRunning && <MissionHud />}
       </AnimatePresence>
+
+      {/* Turns alert frames into events, and puts the urgent ones on screen.
+          Both sit outside the shell so a fullscreen mission or the narrated
+          demonstration cannot hide a critical finding. */}
+      <AlertFeed />
+      <AlertToasts />
 
       <DemoStory />
     </>

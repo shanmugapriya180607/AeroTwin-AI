@@ -12,7 +12,7 @@
   z-index: 60;
   overflow: hidden;
   background:
-    radial-gradient(1200px 800px at 50% 8%, #ffffff 0%, rgba(255, 255, 255, 0) 62%),
+    radial-gradient(1200px 800px at 50% 8%, var(--panel) 0%, transparent 62%),
     radial-gradient(900px 700px at 82% 96%, rgba(10, 167, 194, 0.12), transparent 60%),
     radial-gradient(800px 620px at 12% 92%, rgba(10, 110, 214, 0.10), transparent 58%),
     linear-gradient(178deg, #f7fbff 0%, #eaf2fb 54%, #dfeaf7 100%);
@@ -35,9 +35,9 @@
 
 .showcase__nogl-note {
   font-family: var(--mono);
-  font-size: 9.5px;
+  font-size: 11px;
   letter-spacing: 0.24em;
-  color: var(--ink-4);
+  color: var(--ink-3);
 }
 
 /* ---- top bar ------------------------------------------------------------ */
@@ -62,7 +62,7 @@
   align-items: center;
   gap: 12px;
   font-family: var(--mono);
-  font-size: 10px;
+  font-size: 11.5px;
   letter-spacing: 0.24em;
   color: var(--ink-3);
 }
@@ -82,9 +82,9 @@
   border: 1px solid rgba(217, 154, 0, 0.34);
   background: var(--caution-dim);
   font-family: var(--mono);
-  font-size: 8.5px;
+  font-size: 10.5px;
   letter-spacing: 0.2em;
-  color: var(--demo);
+  color: var(--demo-ink);
 }
 
 /* ---- component rail ----------------------------------------------------- */
@@ -105,24 +105,24 @@
   padding: 9px 16px;
   border-radius: 100px;
   border: 1px solid var(--hairline-strong);
-  background: rgba(255, 255, 255, 0.7);
+  background: var(--glass-soft);
   backdrop-filter: blur(8px);
   font-family: var(--mono);
-  font-size: 9.5px;
+  font-size: 11px;
   letter-spacing: 0.22em;
   color: var(--ink-3);
   transition: all var(--fast) var(--ease);
 }
 
 .showcase__part:hover {
-  color: var(--accent);
+  color: var(--accent-ink);
   border-color: rgba(10, 110, 214, 0.4);
   transform: translateX(3px);
 }
 
 .showcase__part.is-active {
   color: #fff;
-  background: linear-gradient(135deg, var(--accent), #0a86e0);
+  background: linear-gradient(135deg, var(--accent), var(--accent-lift));
   border-color: transparent;
   box-shadow: 0 6px 18px rgba(10, 110, 214, 0.28);
 }
@@ -135,12 +135,12 @@
   place-items: center;
   border-radius: 50%;
   border: 1px solid var(--hairline-strong);
-  background: rgba(255, 255, 255, 0.8);
+  background: var(--glass-soft);
   color: var(--ink-3);
   transition: all var(--fast) var(--ease);
 }
 
-.showcase__reset:hover { color: var(--accent); border-color: var(--accent); }
+.showcase__reset:hover { color: var(--accent-ink); border-color: var(--accent); }
 
 /* ---- hotspot labels in the 3D frame ------------------------------------- */
 
@@ -148,12 +148,12 @@
   padding: 4px 11px;
   border-radius: 100px;
   border: 1px solid rgba(10, 110, 214, 0.26);
-  background: rgba(255, 255, 255, 0.9);
+  background: var(--glass);
   box-shadow: var(--shadow-1);
   font-family: var(--mono);
-  font-size: 9px;
+  font-size: 11px;
   letter-spacing: 0.2em;
-  color: var(--accent);
+  color: var(--accent-ink);
   white-space: nowrap;
   transform: translate(18px, -18px);
   transition: all var(--fast) var(--ease);
@@ -169,7 +169,7 @@
 
 /* Once a component is the subject, the others step back rather than competing
    with it for the eye. */
-.hotspot.is-muted { opacity: 0.35; }
+.hotspot.is-muted { opacity: 0.55; }
 .hotspot.is-muted:hover { opacity: 1; }
 
 /* ---- engine view modes -------------------------------------------------- */
@@ -185,7 +185,7 @@
   padding: 6px;
   border-radius: 100px;
   border: 1px solid var(--hairline);
-  background: rgba(255, 255, 255, 0.86);
+  background: var(--glass);
   backdrop-filter: blur(12px);
   box-shadow: var(--shadow-2);
 }
@@ -194,7 +194,7 @@
   padding: 8px 18px;
   border-radius: 100px;
   font-family: var(--mono);
-  font-size: 9.5px;
+  font-size: 11px;
   letter-spacing: 0.2em;
   color: var(--ink-3);
   transition: all var(--fast) var(--ease);
@@ -204,7 +204,7 @@
 
 .showcase__mode.is-active {
   color: #fff;
-  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  background: linear-gradient(135deg, var(--accent), var(--accent-2-deep));
   box-shadow: 0 4px 14px rgba(10, 110, 214, 0.26);
 }
 
@@ -212,13 +212,13 @@
 .showcase__flag {
   padding: 0 14px 0 12px;
   font-family: var(--mono);
-  font-size: 10px;
+  font-size: 11.5px;
   letter-spacing: 0.16em;
-  color: var(--accent-3);
+  color: var(--accent-3-ink);
   border-left: 1px solid var(--hairline);
 }
 
-.showcase__flag { color: var(--crit); }
+.showcase__flag { color: var(--crit-ink); }
 
 /* ---- live readout ------------------------------------------------------- */
 
@@ -238,9 +238,9 @@
 
 .showcase__stat-k {
   font-family: var(--mono);
-  font-size: 8.5px;
+  font-size: 10.5px;
   letter-spacing: 0.28em;
-  color: var(--ink-4);
+  color: var(--ink-3);
 }
 
 .showcase__stat-v {
@@ -253,13 +253,13 @@
 }
 
 .showcase__stat-v small {
-  font-size: 10px;
-  color: var(--ink-4);
+  font-size: 11.5px;
+  color: var(--ink-3);
   margin-left: 4px;
   letter-spacing: 0.12em;
 }
 
-.showcase__stat:last-child .showcase__stat-v { color: var(--accent); }
+.showcase__stat:last-child .showcase__stat-v { color: var(--accent-ink); }
 
 /* ---- the way on --------------------------------------------------------- */
 
@@ -274,12 +274,12 @@
   padding: 15px 32px;
   border-radius: 100px;
   border: none;
-  background: linear-gradient(135deg, var(--accent) 0%, #0a86e0 52%, var(--accent-2) 100%);
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-lift) 52%, var(--accent-2-deep) 100%);
   color: #fff;
   font-family: var(--mono);
-  font-size: 11px;
-  letter-spacing: 0.24em;
-  font-weight: 500;
+  font-size: 12.5px;
+  letter-spacing: 0.18em;
+  font-weight: 700;
   box-shadow: 0 12px 34px rgba(10, 110, 214, 0.3);
   transition: transform var(--mid) var(--ease), box-shadow var(--mid) var(--ease);
 }
@@ -294,9 +294,9 @@
   left: 34px;
   bottom: 30px;
   font-family: var(--mono);
-  font-size: 8.5px;
+  font-size: 10.5px;
   letter-spacing: 0.24em;
-  color: var(--ink-4);
+  color: var(--ink-3);
   pointer-events: none;
 }
 
@@ -320,4 +320,103 @@
   }
   .showcase__data { top: 96px; transform: none; }
   .showcase__hint { display: none; }
+}
+
+/* The way past the aircraft, in the same place and the same shape as the one
+   on the film and the method screen before it. */
+.showcase__skip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: var(--gap-4);
+  padding: 8px 15px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 100px;
+  background: var(--glass-soft);
+  backdrop-filter: blur(8px);
+  color: var(--ink-2);
+  font-family: var(--mono);
+  font-size: var(--t-small);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  transition: all var(--fast) var(--ease);
+  flex: none;
+}
+
+.showcase__skip:hover { color: var(--accent-ink); border-color: var(--accent); }
+
+/* The selected component, said plainly. Facts the twin actually models or
+   measures - never a specification the console has no way of knowing. */
+.showcase__detail {
+  /* Beside the component rail, not on top of it. The rail is pinned to the
+     left edge at mid-height and is the control that opens this card - a panel
+     that covers its own trigger is a trap. */
+  position: absolute;
+  left: 214px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 244px;
+  padding: 16px 18px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--r-lg);
+  background: var(--glass);
+  backdrop-filter: blur(14px);
+  box-shadow: var(--shadow-2);
+  z-index: 6;
+}
+
+.showcase__detail-title {
+  font-size: var(--t-lead);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--ink);
+  text-transform: uppercase;
+}
+
+.showcase__detail-list {
+  list-style: none;
+  margin: 11px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.showcase__detail-list li {
+  font-size: var(--t-small);
+  line-height: 1.45;
+  color: var(--ink-2);
+  padding-left: 12px;
+  position: relative;
+}
+
+.showcase__detail-list li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 7px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.showcase__detail-flag {
+  display: inline-block;
+  margin-top: 12px;
+  padding: 3px 9px;
+  border-radius: var(--r-sm);
+  background: var(--crit-dim);
+  color: var(--crit-ink);
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+/* On a narrow stage the rail and the card would collide, so the card moves
+   under the rail rather than over the aircraft. */
+@media (max-width: 1100px) {
+  .showcase__detail { left: 34px; top: auto; bottom: 118px; transform: none; width: 232px; }
 }

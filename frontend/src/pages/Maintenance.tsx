@@ -12,7 +12,13 @@ import { api } from '../services/api'
 import { useTwin } from '../store/useTwin'
 import { ContributionBars } from '../components/charts/Charts'
 import {
-  Badge, Empty, Kv, Meter, Note, PageHead, StatusBadge, fmt, pct, signed,
+  Badge,
+  Empty,
+  Meter,
+  PageHead,
+  StatusBadge,
+  fmt,
+  signed,
 } from '../components/ui/Primitives'
 
 export default function Maintenance() {
@@ -52,7 +58,7 @@ export default function Maintenance() {
         {/* ---- ranked list -------------------------------------------------- */}
         <section className="panel">
           <header className="panel__head">
-            <ClipboardList size={13} color="var(--accent)" />
+            <ClipboardList size={13} color="var(--accent-ink)" />
             <h2 className="panel__title">Work queue</h2>
             <span className="panel__sub">BY PRIORITY</span>
           </header>
@@ -88,7 +94,7 @@ export default function Maintenance() {
         {/* ---- selected advisory ------------------------------------------- */}
         <section className="panel panel--glow">
           <header className="panel__head">
-            <Wrench size={13} color="var(--warn)" />
+            <Wrench size={13} color="var(--warn-ink)" />
             <h2 className="panel__title">{selected?.title ?? 'Advisory detail'}</h2>
             <span className="panel__spacer" />
             {selected && <Badge tone="warn">{selected.despatch_impact}</Badge>}
@@ -100,7 +106,7 @@ export default function Maintenance() {
               <div className="stack stack--lg">
                 <div>
                   <span className="micro">RECOMMENDED ACTION</span>
-                  <div style={{ fontSize: 19, fontWeight: 600, marginTop: 4, letterSpacing: '0.02em' }}>
+                  <div style={{ fontSize: 21, fontWeight: 600, marginTop: 4, letterSpacing: '0.02em' }}>
                     {selected.action}
                   </div>
                 </div>
@@ -201,7 +207,7 @@ export default function Maintenance() {
                 {selected.procedure?.length > 0 && (
                   <div>
                     <div className="row row--tight" style={{ marginBottom: 8 }}>
-                      <ListChecks size={13} color="var(--accent)" />
+                      <ListChecks size={13} color="var(--accent-ink)" />
                       <span className="micro">SUGGESTED PROCEDURE</span>
                     </div>
                     <ol style={{ margin: 0, paddingLeft: 20, display: 'grid', gap: 6 }}>
@@ -225,46 +231,6 @@ export default function Maintenance() {
           </div>
         </section>
       </div>
-
-      {/* ---- failure mode reference ---------------------------------------- */}
-      <section className="panel" style={{ marginRight: 372 }}>
-        <header className="panel__head">
-          <h2 className="panel__title">Failure mode reference</h2>
-                  </header>
-        <div className="panel__body panel__body--flush">
-          <div className="scroll-y" style={{ maxHeight: 300 }}>
-            <table className="table table--compact">
-              <thead>
-                <tr>
-                  <th>Mechanism</th>
-                  <th>Sensor signature</th>
-                  <th>Typical action</th>
-                  <th>Urgency</th>
-                </tr>
-              </thead>
-              <tbody>
-                {Object.entries(data?.failure_modes ?? {}).map(([key, mode]: [string, any]) => (
-                  <tr key={key}>
-                    <td>{mode.label ?? key}</td>
-                    <td style={{ color: 'var(--ink-3)', whiteSpace: 'normal' }}>{mode.signature ?? '—'}</td>
-                    <td style={{ color: 'var(--ink-3)', whiteSpace: 'normal' }}>{mode.action ?? '—'}</td>
-                    <td>
-                      <Badge tone={mode.urgency === 'IMMEDIATE' ? 'crit' : mode.urgency === 'HIGH' ? 'warn' : 'caution'}>
-                        {mode.urgency ?? '—'}
-                      </Badge>
-                    </td>
-                  </tr>
-                ))}
-                {!data?.failure_modes && (
-                  <tr>
-                    <td colSpan={4}><Empty label="Reference unavailable offline" /></td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </section>
     </>
   )
 }
