@@ -147,7 +147,7 @@ export function DemoControls() {
           await refreshStatus()
         })}
       >
-        <Radio size={14} color={status?.datalink?.connected ? undefined : 'var(--crit)'} />
+        <Radio size={14} color={status?.datalink?.connected ? undefined : 'var(--crit-ink)'} />
       </button>
 
       <button

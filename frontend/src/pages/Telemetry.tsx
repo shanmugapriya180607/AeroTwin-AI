@@ -76,7 +76,7 @@ export default function Telemetry() {
         <section className="panel" style={{ marginBottom: 16 }}>
           <div className="panel__body panel__body--tight">
             <div className="row" style={{ alignItems: 'flex-start' }}>
-              <Radio size={15} color="var(--accent)" style={{ marginTop: 2 }} />
+              <Radio size={15} color="var(--accent-ink)" style={{ marginTop: 2 }} />
               <div style={{ minWidth: 0 }}>
                 <div className="row row--tight" style={{ marginBottom: 3 }}>
                   <span className="label" style={{ color: 'var(--ink-2)' }}>{source.label}</span>
@@ -93,11 +93,11 @@ export default function Telemetry() {
       <div className="grid" style={{ gridTemplateColumns: 'minmax(0, 1.25fr) minmax(0, 1fr)', marginBottom: 16 }}>
         <section className="panel">
           <header className="panel__head">
-            <Activity size={13} color="var(--accent)" />
+            <Activity size={13} color="var(--accent-ink)" />
             <h2 className="panel__title">Channel table</h2>
             <span className="panel__sub">CLICK TO CHART</span>
             <span className="panel__spacer" />
-            <span className="mono" style={{ fontSize: 10, color: 'var(--ink-4)' }}>
+            <span className="mono" style={{ fontSize: 11.5, color: 'var(--ink-4)' }}>
               t = {fmt(telemetry?.tick?.t, 0)} s
             </span>
           </header>
@@ -140,10 +140,10 @@ export default function Telemetry() {
                             <td className="num">
                               {value !== undefined ? `${fmt(value, 1)} ${channel.unit}` : '—'}
                             </td>
-                            <td className="num" style={{ color: 'var(--expected)' }}>
+                            <td className="num" style={{ color: 'var(--expected-ink)' }}>
                               {expected !== undefined ? fmt(expected, 1) : '—'}
                             </td>
-                            <td className="num" style={{ color: 'var(--residual)' }}>
+                            <td className="num" style={{ color: 'var(--residual-ink)' }}>
                               {residual ? signed(residual.residual, 2) : '—'}
                             </td>
                             <td style={{ padding: 0 }}>
@@ -178,7 +178,7 @@ export default function Telemetry() {
 
         <section className="panel">
           <header className="panel__head">
-            <Waves size={13} color="var(--accent)" />
+            <Waves size={13} color="var(--accent-ink)" />
             <h2 className="panel__title">{focusChannel?.label ?? focus}</h2>
             <span className="panel__spacer" />
             {focusChannel && <ProvenanceTag provenance={focusChannel.provenance} />}

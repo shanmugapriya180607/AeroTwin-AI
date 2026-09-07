@@ -63,7 +63,7 @@ export default function Architecture() {
         <>
           <section className="panel" style={{ marginBottom: 16 }}>
             <header className="panel__head">
-              <Boxes size={13} color="var(--accent)" />
+              <Boxes size={13} color="var(--accent-ink)" />
               <h2 className="panel__title">Data flow</h2>
               <span className="panel__spacer" />
               <Badge tone="residual">RESIDUAL-DRIVEN</Badge>
@@ -80,11 +80,11 @@ export default function Architecture() {
                 {lanes.map((lane: any, laneIndex: number) => (
                   <div key={lane.id}>
                     <div className="row" style={{ marginBottom: 10 }}>
-                      <span className="label" style={{ color: 'var(--accent)' }}>{lane.title}</span>
+                      <span className="label" style={{ color: 'var(--accent-ink)' }}>{lane.title}</span>
                       {laneIndex < lanes.length - 1 && (
                         <>
                           <span className="spacer" />
-                          <ArrowRight size={13} color="var(--ink-5)" />
+                          <ArrowRight size={13} color="var(--ink-4)" />
                         </>
                       )}
                     </div>
@@ -106,7 +106,7 @@ export default function Architecture() {
                             <div className="row row--tight">
                               <span
                                 className="label"
-                                style={{ color: lit ? 'var(--accent)' : 'var(--ink-2)' }}
+                                style={{ color: lit ? 'var(--accent-ink)' : 'var(--ink-2)' }}
                               >
                                 {node.label}
                               </span>
@@ -115,11 +115,11 @@ export default function Architecture() {
                             <div
                               className="mono"
                               style={{
-                                fontSize: 9.5,
+                                fontSize: 11,
                                 marginTop: 5,
                                 color:
-                                  node.state?.includes('NOT') ? 'var(--caution)'
-                                    : node.state === 'DOCUMENTED' ? 'var(--ink-4)' : 'var(--ok)',
+                                  node.state?.includes('NOT') ? 'var(--caution-ink)'
+                                    : node.state === 'DOCUMENTED' ? 'var(--ink-4)' : 'var(--ok-ink)',
                                 letterSpacing: '0.1em',
                               }}
                             >
@@ -146,11 +146,11 @@ export default function Architecture() {
                     alignItems: 'flex-start',
                   }}
                 >
-                  <Repeat size={15} color="var(--crit)" style={{ marginTop: 2 }} />
+                  <Repeat size={15} color="var(--crit-ink)" style={{ marginTop: 2 }} />
                   <div>
                     <div className="row row--tight" style={{ marginBottom: 4 }}>
-                      <span className="label" style={{ color: 'var(--crit)' }}>{data.feedback.label}</span>
-                      <span className="mono" style={{ fontSize: 10, color: 'var(--ink-4)' }}>
+                      <span className="label" style={{ color: 'var(--crit-ink)' }}>{data.feedback.label}</span>
+                      <span className="mono" style={{ fontSize: 11.5, color: 'var(--ink-4)' }}>
                         {data.feedback.from} → {data.feedback.to}
                       </span>
                     </div>
@@ -163,7 +163,7 @@ export default function Architecture() {
           <div className="grid" style={{ gridTemplateColumns: 'minmax(0, 1.3fr) minmax(0, 1fr)', marginRight: 372 }}>
             <section className="panel">
               <header className="panel__head">
-                <Server size={13} color="var(--accent)" />
+                <Server size={13} color="var(--accent-ink)" />
                 <h2 className="panel__title">Deployment chain</h2>
                 <span className="panel__spacer" />
                 <Badge tone="ok">ON-PREMISE · AIR-GAPPED READY</Badge>
@@ -205,9 +205,9 @@ export default function Architecture() {
                   ].map((row) => (
                     <div className="tile" key={row.from}>
                       <div className="row row--tight">
-                        <span className="mono" style={{ fontSize: 10.5, color: 'var(--ink-2)' }}>{row.from}</span>
-                        <ArrowRight size={11} color="var(--ink-5)" />
-                        <span className="mono" style={{ fontSize: 10.5, color: 'var(--accent)' }}>{row.to}</span>
+                        <span className="mono" style={{ fontSize: 12, color: 'var(--ink-2)' }}>{row.from}</span>
+                        <ArrowRight size={11} color="var(--ink-4)" />
+                        <span className="mono" style={{ fontSize: 12, color: 'var(--accent-ink)' }}>{row.to}</span>
                         <span className="spacer" />
                         <Badge tone={row.state === 'FUTURE' ? 'neutral' : 'ok'}>{row.state}</Badge>
                       </div>

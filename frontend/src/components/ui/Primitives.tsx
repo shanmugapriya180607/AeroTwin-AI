@@ -147,12 +147,12 @@ export function Stat({
   mono?: boolean
 }) {
   const color =
-    tone === 'ok' ? 'var(--ok)'
-      : tone === 'caution' ? 'var(--caution)'
-        : tone === 'warn' ? 'var(--warn)'
-          : tone === 'crit' ? 'var(--crit)'
-            : tone === 'residual' ? 'var(--residual)'
-              : tone === 'expected' ? 'var(--expected)'
+    tone === 'ok' ? 'var(--ok-ink)'
+      : tone === 'caution' ? 'var(--caution-ink)'
+        : tone === 'warn' ? 'var(--warn-ink)'
+          : tone === 'crit' ? 'var(--crit-ink)'
+            : tone === 'residual' ? 'var(--residual-ink)'
+              : tone === 'expected' ? 'var(--expected-ink)'
                 : undefined
 
   return (

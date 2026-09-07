@@ -12,21 +12,20 @@
  */
 
 import { useEffect, useState } from 'react'
-import { Braces, Database, FlaskConical, RefreshCw, Terminal } from 'lucide-react'
+import { Braces, Database, RefreshCw, Terminal } from 'lucide-react'
 import { api } from '../services/api'
 import { liveOrSnapshot, snapshotAge } from '../services/reports'
 import {
-  Badge, Empty, Loading, Metrics, PageHead, ProvenanceTag, StatusRows, TagRow,
-  fmt, pct,
+  Badge,
+  Empty,
+  Loading,
+  Metrics,
+  PageHead,
+  ProvenanceTag,
+  StatusRows,
+  fmt,
+  pct,
 } from '../components/ui/Primitives'
-
-/** Datasets considered. The verdict is the content; the reason is the tag. */
-const DATASETS: Array<{ name: string; state: string; tone: 'ok' | 'crit' | 'caution'; meta: string }> = [
-  { name: 'NGAFID-MC', state: 'VALIDATED', tone: 'ok', meta: 'PISTON · MAINTENANCE EVENTS' },
-  { name: 'NASA C-MAPSS', state: 'REJECTED', tone: 'crit', meta: 'TURBOFAN' },
-  { name: 'NASA TURBOFAN', state: 'REJECTED', tone: 'crit', meta: 'NO CYLINDER DATA' },
-  { name: 'FEMTO BEARING', state: 'REJECTED', tone: 'crit', meta: 'NOT PROPULSION' },
-]
 
 export default function DataModels() {
   const [dictionary, setDictionary] = useState<any>(null)
@@ -108,7 +107,7 @@ export default function DataModels() {
       {/* ---- corpus ------------------------------------------------------- */}
       <section className="panel panel--marked" style={{ marginBottom: 16 }}>
         <header className="panel__head">
-          <Database size={13} color="var(--accent)" />
+          <Database size={13} color="var(--accent-ink)" />
           <h2 className="panel__title">Corpus</h2>
           <span className="panel__spacer" />
           <Badge tone={real ? 'real' : 'demo'}>{real ? 'REAL' : 'SIMULATED'}</Badge>
@@ -168,7 +167,7 @@ export default function DataModels() {
                           <td className="mono">{column.key}</td>
                           <td
                             className="mono"
-                            style={{ color: column.matched_column ? undefined : 'var(--caution)' }}
+                            style={{ color: column.matched_column ? undefined : 'var(--caution-ink)' }}
                           >
                             {column.matched_column ?? 'ABSENT'}
                           </td>
@@ -187,86 +186,10 @@ export default function DataModels() {
         </div>
       </section>
 
-      {/* ---- datasets and models ------------------------------------------ */}
-      <div className="grid grid--3" style={{ marginBottom: 16 }}>
-        <section className="panel">
-          <header className="panel__head">
-            <h2 className="panel__title">Datasets</h2>
-          </header>
-          <div className="panel__body panel__body--tight">
-            <div className="stack stack--sm">
-              {DATASETS.map((d) => (
-                <TagRow key={d.name} label={d.name} state={d.state} tone={d.tone} meta={d.meta} />
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section className="panel">
-          <header className="panel__head">
-            <FlaskConical size={13} color="var(--accent)" />
-            <h2 className="panel__title">Learned model</h2>
-            <span className="panel__spacer" />
-            <Badge tone={learned?.trained ? 'info' : 'caution'}>{learned?.state ?? '—'}</Badge>
-          </header>
-          <div className="panel__body panel__body--tight">
-            {!loaded ? (
-              <Loading height={188} />
-            ) : !learned ? (
-              <Empty label="UNAVAILABLE" />
-            ) : (
-              <>
-                <StatusRows
-                  rows={[
-                    { k: 'MODEL', v: `${learned.name} v${learned.version}` },
-                    { k: 'SUPERVISION', v: String(learned.supervision) },
-                    { k: 'INPUT', v: 'RESIDUALS' },
-                    { k: 'ESTIMATORS', v: String(learned.n_estimators) },
-                    { k: 'SAMPLES', v: `${learned.train_samples ?? 0} / ${learned.required_samples}` },
-                    { k: 'REFITS', v: String(learned.refits ?? 0) },
-                  ]}
-                />
-                <div className="chip-list" style={{ marginTop: 10 }}>
-                  {(ml?.features ?? []).map((feature: any) => (
-                    <span key={feature.name} title={`${feature.label} (${feature.unit})`}>
-                      <Badge tone="residual">{feature.name}</Badge>
-                    </span>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
-        </section>
-
-        <section className="panel">
-          <header className="panel__head">
-            <h2 className="panel__title">Fusion</h2>
-          </header>
-          <div className="panel__body panel__body--tight">
-            {!loaded ? (
-              <Loading height={188} />
-            ) : ml ? (
-              <StatusRows
-                rows={[
-                  { k: 'BASELINE', v: 'RESIDUAL Z-SCORE' },
-                  { k: 'BASELINE WEIGHT', v: pct(ml.fusion.weight_baseline) },
-                  { k: 'LEARNED', v: 'ISOLATION FOREST' },
-                  { k: 'LEARNED WEIGHT', v: pct(ml.fusion.weight_learned), tone: 'accent' },
-                  { k: 'FAULT CLASS', v: String(ml.fault_classification.state), tone: 'warn' },
-                  { k: 'ABSTAIN', v: 'ON THIN EVIDENCE', tone: 'dim' },
-                ]}
-              />
-            ) : (
-              <Empty label="UNAVAILABLE" />
-            )}
-          </div>
-        </section>
-      </div>
-
       {/* ---- data dictionary ---------------------------------------------- */}
       <section className="panel" style={{ marginBottom: 16 }}>
         <header className="panel__head">
-          <Braces size={13} color="var(--accent)" />
+          <Braces size={13} color="var(--accent-ink)" />
           <h2 className="panel__title">Data dictionary</h2>
           <span className="panel__spacer" />
           <Badge tone="info">{channels.length} CHANNELS</Badge>
@@ -322,7 +245,7 @@ export default function DataModels() {
       {/* ---- prediction contract ------------------------------------------- */}
       <section className="panel" style={{ marginRight: 372 }}>
         <header className="panel__head">
-          <Terminal size={13} color="var(--accent)" />
+          <Terminal size={13} color="var(--accent-ink)" />
           <h2 className="panel__title">Prediction API</h2>
           <span className="panel__sub">POST /api/predict</span>
           <span className="panel__spacer" />

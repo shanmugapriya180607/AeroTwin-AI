@@ -30,12 +30,12 @@
 
 .theatre__bar--top {
   top: 0;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(255, 255, 255, 0));
+  background: linear-gradient(180deg, var(--scrim-2), var(--scrim-edge));
 }
 
 .theatre__bar--bottom {
   bottom: 0;
-  background: linear-gradient(0deg, rgba(255, 255, 255, 0.94) 26%, rgba(255, 255, 255, 0));
+  background: linear-gradient(0deg, var(--scrim-3) 26%, var(--scrim-edge));
 }
 
 /* ---- top bar ------------------------------------------------------------ */
@@ -57,12 +57,12 @@
   padding: 5px 12px;
   border-radius: 100px;
   border: 1px solid rgba(217, 154, 0, 0.34);
-  background: rgba(255, 255, 255, 0.78);
+  background: var(--glass-soft);
   backdrop-filter: blur(8px);
   font-family: var(--mono);
-  font-size: 8.5px;
+  font-size: 10.5px;
   letter-spacing: 0.22em;
-  color: var(--demo);
+  color: var(--demo-ink);
   font-weight: 700;
 }
 
@@ -73,13 +73,13 @@
   place-items: center;
   border-radius: 50%;
   border: 1px solid var(--hairline-strong);
-  background: rgba(255, 255, 255, 0.82);
+  background: var(--glass-soft);
   backdrop-filter: blur(8px);
   color: var(--ink-3);
   transition: all var(--fast) var(--ease);
 }
 
-.theatre__close:hover { color: var(--crit); border-color: var(--crit); background: #fff; }
+.theatre__close:hover { color: var(--crit-ink); border-color: var(--crit); background: var(--panel); }
 
 /* ---- the engine, once it is the subject --------------------------------- */
 
@@ -90,7 +90,7 @@
   width: 380px;
   border-radius: var(--r-lg);
   border: 1px solid var(--hairline);
-  background: rgba(255, 255, 255, 0.9);
+  background: var(--glass);
   backdrop-filter: blur(12px);
   box-shadow: var(--shadow-3);
   overflow: hidden;
@@ -104,13 +104,13 @@
   padding: 9px 13px;
   border-bottom: 1px solid var(--hairline);
   font-family: var(--mono);
-  font-size: 9px;
+  font-size: 11px;
   letter-spacing: 0.2em;
   color: var(--ink-3);
   font-weight: 700;
 }
 
-.theatre__engine-mode { color: var(--accent); }
+.theatre__engine-mode { color: var(--accent-ink); }
 .theatre__engine .engine3d { border: none; border-radius: 0; }
 
 /* ---- narration ---------------------------------------------------------- */
@@ -127,10 +127,10 @@
   margin-bottom: 14px;
   padding: 5px 13px;
   border-radius: 100px;
-  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  background: linear-gradient(135deg, var(--accent), var(--accent-2-deep));
   color: #fff;
   font-family: var(--mono);
-  font-size: 9px;
+  font-size: 11px;
   letter-spacing: 0.26em;
   font-weight: 700;
   box-shadow: 0 6px 18px rgba(10, 110, 214, 0.28);
@@ -147,7 +147,7 @@
 
 .theatre__detail {
   margin-top: 12px;
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.55;
   color: var(--ink-2);
   font-weight: 500;
@@ -169,7 +169,7 @@
 
 .theatre__evidence-k {
   font-family: var(--mono);
-  font-size: 9px;
+  font-size: 11px;
   letter-spacing: 0.28em;
   color: var(--ink-3);
   font-weight: 700;
@@ -181,7 +181,7 @@
   font-weight: 600;
   letter-spacing: 0.02em;
   line-height: 1.25;
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 
 /* ---- pipeline and controls ----------------------------------------------- */
@@ -207,11 +207,11 @@
   padding: 5px 11px;
   border-radius: 100px;
   border: 1px solid var(--hairline);
-  background: rgba(255, 255, 255, 0.7);
+  background: var(--glass-soft);
   font-family: var(--mono);
-  font-size: 8.5px;
+  font-size: 10.5px;
   letter-spacing: 0.2em;
-  color: var(--ink-4);
+  color: var(--ink-3);
   font-weight: 700;
   transition: all var(--mid) var(--ease);
 }
@@ -234,13 +234,13 @@
   place-items: center;
   border-radius: 50%;
   border: 1px solid var(--hairline-strong);
-  background: rgba(255, 255, 255, 0.82);
+  background: var(--glass-soft);
   backdrop-filter: blur(8px);
   color: var(--ink-2);
   transition: all var(--fast) var(--ease);
 }
 
-.theatre__btn:hover { color: var(--accent); border-color: var(--accent); background: #fff; }
+.theatre__btn:hover { color: var(--accent-ink); border-color: var(--accent); background: var(--panel); }
 
 /* ---- beat rail and progress ---------------------------------------------- */
 
@@ -318,7 +318,7 @@
   display: grid;
   place-items: center;
   background:
-    radial-gradient(1200px 800px at 50% 10%, #ffffff 0%, rgba(255, 255, 255, 0) 60%),
+    radial-gradient(1200px 800px at 50% 10%, var(--panel) 0%, transparent 60%),
     linear-gradient(178deg, #f7fbff 0%, #eaf2fb 54%, #dfeaf7 100%);
 }
 
@@ -330,7 +330,7 @@
   animation: splash-in 620ms var(--ease) both;
 }
 
-.splash__mark { color: var(--accent); }
+.splash__mark { color: var(--accent-ink); }
 
 .splash__name {
   font-family: var(--sans);
@@ -343,9 +343,9 @@
 
 .splash__sub {
   font-family: var(--mono);
-  font-size: 8.5px;
+  font-size: 10.5px;
   letter-spacing: 0.4em;
-  color: var(--ink-4);
+  color: var(--ink-3);
   font-weight: 600;
   margin-top: -6px;
 }
@@ -373,7 +373,7 @@
 
 .splash__label {
   font-family: var(--mono);
-  font-size: 8.5px;
+  font-size: 10.5px;
   letter-spacing: 0.32em;
   color: var(--ink-3);
   font-weight: 700;

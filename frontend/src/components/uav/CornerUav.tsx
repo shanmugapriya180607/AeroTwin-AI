@@ -8,7 +8,8 @@
 
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ChevronDown, ChevronUp, Maximize2 } from 'lucide-react'
+import { AnimatePresence, motion } from 'framer-motion'
+import { ChevronDown, ChevronUp, Maximize2, X } from 'lucide-react'
 import { useTwin } from '../../store/useTwin'
 import { flightDynamics } from './flight'
 
@@ -23,10 +24,14 @@ export const CornerUav = forwardRef<HTMLDivElement, { hidden?: boolean }>(({ hid
   const mode = useTwin((s) => s.mode)
   const dock = useTwin((s) => s.dock)
   const [docked, setDocked] = useState(false)
+  const [infoOpen, setInfoOpen] = useState(false)
 
   const altRef = useRef<HTMLSpanElement>(null)
   const iasRef = useRef<HTMLSpanElement>(null)
   const rpmRef = useRef<HTMLSpanElement>(null)
+  const popAltRef = useRef<HTMLSpanElement>(null)
+  const popIasRef = useRef<HTMLSpanElement>(null)
+  const popRpmRef = useRef<HTMLSpanElement>(null)
 
   /* Read the flight model directly each frame. These three numbers change
      every tick and re-rendering the card for them would be wasteful. */
@@ -34,8 +39,12 @@ export const CornerUav = forwardRef<HTMLDivElement, { hidden?: boolean }>(({ hid
     let raf = 0
     const tick = () => {
       const s = flightDynamics.state
-      if (altRef.current) altRef.current.textContent = Math.round(s.altitudeFt).toLocaleString()
-      if (iasRef.current) iasRef.current.textContent = s.speedKt.toFixed(0)
+      const alt = Math.round(s.altitudeFt).toLocaleString()
+      const ias = s.speedKt.toFixed(0)
+      if (altRef.current) altRef.current.textContent = alt
+      if (iasRef.current) iasRef.current.textContent = ias
+      if (popAltRef.current) popAltRef.current.textContent = alt
+      if (popIasRef.current) popIasRef.current.textContent = ias
       raf = requestAnimationFrame(tick)
     }
     raf = requestAnimationFrame(tick)
@@ -43,11 +52,10 @@ export const CornerUav = forwardRef<HTMLDivElement, { hidden?: boolean }>(({ hid
   }, [])
 
   useEffect(() => {
-    if (rpmRef.current) {
-      const rpm = telemetry?.tick?.channels?.rpm ?? mission?.rpm ?? 0
-      rpmRef.current.textContent = Math.round(rpm).toLocaleString()
-    }
-  }, [telemetry, mission])
+    const rpm = Math.round(telemetry?.tick?.channels?.rpm ?? mission?.rpm ?? 0).toLocaleString()
+    if (rpmRef.current) rpmRef.current.textContent = rpm
+    if (popRpmRef.current) popRpmRef.current.textContent = rpm
+  }, [telemetry, mission, infoOpen])
 
   /* On the Command Center the card docks into the hero slot instead of sitting
      in the corner.
@@ -96,6 +104,12 @@ export const CornerUav = forwardRef<HTMLDivElement, { hidden?: boolean }>(({ hid
   const phase = telemetry?.tick?.phase ?? mission?.mission?.phase ?? 'GROUND'
   const airborne = phase !== 'GROUND'
 
+  /* Hidden means the console has gone to a fullscreen mission or the story
+     theatre. A popover left open under either of those is a stray panel. */
+  useEffect(() => {
+    if (hidden || collapsed || docked) setInfoOpen(false)
+  }, [hidden, collapsed, docked])
+
   const card = (
     <div
       ref={cardRef}
@@ -107,16 +121,22 @@ export const CornerUav = forwardRef<HTMLDivElement, { hidden?: boolean }>(({ hid
         pointerEvents: hidden ? 'none' : 'auto',
         transition: 'opacity 420ms var(--ease)',
       }}
-      onClick={enterMission}
+      /* Clicking the aircraft tells you about the aircraft. It used to throw
+         the operator into the fullscreen mission view, which is a different
+         feature entirely and a surprising place to land from a decorative
+         corner card - so that now has its own labelled control below. */
+      onClick={() => setInfoOpen((v) => !v)}
       role="button"
       tabIndex={0}
+      aria-expanded={infoOpen}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault()
-          enterMission()
+          setInfoOpen((v) => !v)
         }
+        if (e.key === 'Escape') setInfoOpen(false)
       }}
-      aria-label="Open mission control - fullscreen 3D view"
+      aria-label="AeroTwin UAV - flight status"
     >
       {!docked && <button
         className="uav-card__collapse"
@@ -131,16 +151,16 @@ export const CornerUav = forwardRef<HTMLDivElement, { hidden?: boolean }>(({ hid
       </button>}
 
       <header className="uav-card__head">
-        <span className="mono" style={{ fontSize: 10.5, letterSpacing: '0.14em', color: 'var(--ink-2)' }}>
+        <span className="mono" style={{ fontSize: 12, letterSpacing: '0.14em', color: 'var(--ink-2)' }}>
           {mission?.mission?.uav_id ?? 'UAV-01'}
         </span>
         <span className="spacer" />
         <span
           className="mono"
           style={{
-            fontSize: 9.5,
+            fontSize: 11,
             letterSpacing: '0.14em',
-            color: airborne ? 'var(--ok)' : 'var(--ink-4)',
+            color: airborne ? 'var(--ok-ink)' : 'var(--ink-4)',
             display: 'flex',
             alignItems: 'center',
             gap: 5,
@@ -151,12 +171,75 @@ export const CornerUav = forwardRef<HTMLDivElement, { hidden?: boolean }>(({ hid
         </span>
       </header>
 
-      {!collapsed && !docked && <div className="uav-card__hint">
-        <span className="uav-card__hint-inner">
-          <Maximize2 size={12} strokeWidth={2} />
-          Enter mission control
-        </span>
-      </div>}
+      {!collapsed && !docked && !infoOpen && (
+        <div className="uav-card__hint">
+          <span className="uav-card__hint-inner">UAV status</span>
+        </div>
+      )}
+
+      {/* The way into the fullscreen mission view, said in words and kept
+          separate from the aircraft itself. */}
+      {!collapsed && !docked && (
+        <button
+          className="uav-card__mission"
+          onClick={(e) => { e.stopPropagation(); setInfoOpen(false); enterMission() }}
+          title="Mission Control - fullscreen 3D view"
+        >
+          <Maximize2 size={11} strokeWidth={2} />
+          Mission Control
+        </button>
+      )}
+
+      <AnimatePresence>
+        {infoOpen && (
+          <motion.div
+            className="uav-pop"
+            initial={{ opacity: 0, y: 8, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 8, scale: 0.97 }}
+            transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-label="UAV status"
+          >
+            <header className="uav-pop__head">
+              <span className="uav-pop__title">AeroTwin UAV</span>
+              <span className="spacer" />
+              <button
+                className="uav-pop__close"
+                onClick={(e) => { e.stopPropagation(); setInfoOpen(false) }}
+                aria-label="Close"
+              >
+                <X size={12} />
+              </button>
+            </header>
+
+            <dl className="uav-pop__facts">
+              <div>
+                <dt>Status</dt>
+                <dd className={airborne ? 'is-ok' : ''}>{airborne ? 'IN FLIGHT' : 'ON GROUND'}</dd>
+              </div>
+              <div>
+                <dt>Altitude</dt>
+                <dd><span ref={popAltRef}>0</span> ft</dd>
+              </div>
+              <div>
+                <dt>IAS</dt>
+                <dd><span ref={popIasRef}>0</span> kt</dd>
+              </div>
+              <div>
+                <dt>RPM</dt>
+                <dd><span ref={popRpmRef}>0</span></dd>
+              </div>
+            </dl>
+
+            <p className="uav-pop__note">Monitoring engine condition</p>
+            <span className={`uav-pop__src uav-pop__src--${mode === 'DEMO' ? 'demo' : 'live'}`}>
+              {mode === 'DEMO' ? 'LOCAL MODEL · DEMO' : 'LIVE TELEMETRY'}
+            </span>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <footer className="uav-card__foot">
         {collapsed && !docked && (
@@ -164,7 +247,7 @@ export const CornerUav = forwardRef<HTMLDivElement, { hidden?: boolean }>(({ hid
             <span className="stat__k">UAV</span>
             <span
               className="stat__v"
-              style={{ fontSize: 11, color: airborne ? 'var(--ok)' : 'var(--ink-3)' }}
+              style={{ fontSize: 12.5, color: airborne ? 'var(--ok-ink)' : 'var(--ink-3)' }}
             >
               {mission?.mission?.uav_id ?? 'UAV-01'}
             </span>
@@ -172,28 +255,28 @@ export const CornerUav = forwardRef<HTMLDivElement, { hidden?: boolean }>(({ hid
         )}
         <div className="stat stat--sm">
           <span className="stat__k">ALT</span>
-          <span className="stat__v" style={{ fontSize: 13 }}>
+          <span className="stat__v" style={{ fontSize: 14 }}>
             <span ref={altRef}>0</span>
             <span className="stat__u">ft</span>
           </span>
         </div>
         <div className="stat stat--sm">
           <span className="stat__k">IAS</span>
-          <span className="stat__v" style={{ fontSize: 13 }}>
+          <span className="stat__v" style={{ fontSize: 14 }}>
             <span ref={iasRef}>0</span>
             <span className="stat__u">kt</span>
           </span>
         </div>
         <div className="stat stat--sm">
           <span className="stat__k">RPM</span>
-          <span className="stat__v" style={{ fontSize: 13 }}>
+          <span className="stat__v" style={{ fontSize: 14 }}>
             <span ref={rpmRef}>0</span>
           </span>
         </div>
         {mode === 'DEMO' && (
           <div className="stat stat--sm">
             <span className="stat__k">SRC</span>
-            <span className="stat__v" style={{ fontSize: 11, color: 'var(--demo)' }}>DEMO</span>
+            <span className="stat__v" style={{ fontSize: 12.5, color: 'var(--demo-ink)' }}>DEMO</span>
           </div>
         )}
       </footer>

@@ -4,6 +4,17 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   server: {
+    /*
+     * Bound explicitly, not left to `localhost`.
+     *
+     * Node 17+ resolves `localhost` verbatim, and on Windows that puts ::1
+     * first - so Vite bound the IPv6 loopback only and nothing answered on
+     * 127.0.0.1. Both start scripts print and open http://127.0.0.1:5173/,
+     * which meant the one-command launch opened a page that could not
+     * connect. Naming the interface makes the advertised URL the one that is
+     * actually served, and keeps the server on loopback rather than the LAN.
+     */
+    host: '127.0.0.1',
     port: 5173,
     proxy: {
       '/api': { target: 'http://127.0.0.1:8011', changeOrigin: true },

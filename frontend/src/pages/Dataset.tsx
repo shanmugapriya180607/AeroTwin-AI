@@ -114,7 +114,7 @@ export default function Dataset() {
       {/* ---- what is mounted --------------------------------------------- */}
       <section className="panel panel--marked" style={{ marginBottom: 16 }}>
         <header className="panel__head">
-          <Database size={13} color="var(--accent)" />
+          <Database size={13} color="var(--accent-ink)" />
           <h2 className="panel__title">Corpus</h2>
           <span className="panel__spacer" />
           <span className="micro">{report.reference}</span>

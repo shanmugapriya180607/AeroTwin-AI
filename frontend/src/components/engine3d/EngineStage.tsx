@@ -14,6 +14,7 @@ import { Html, OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
 import { Flame, Layers, Rotate3d, Thermometer, Wind } from 'lucide-react'
 import { useTwin } from '../../store/useTwin'
+import { useIsDark } from '../../store/useSettings'
 import { RenderBoundary } from '../ui/Boundary'
 import { hasWebGL } from '../../services/capability'
 import { EngineModel, emptyEngineState, type EngineViewMode, type EngineVisualState } from './EngineModel'
@@ -120,6 +121,7 @@ export function EngineStage({
   const telemetry = useTwin((s) => s.telemetry)
   const alerts = useTwin((s) => s.alerts)
   const setCylinder = useTwin((s) => s.setCylinder)
+  const dark = useIsDark()
   const [picked, setPicked] = useState<EngineViewMode>(defaultMode)
   const mode = view ?? picked
   const setMode = setPicked
@@ -212,12 +214,15 @@ export function EngineStage({
         }}
       >
         <Suspense fallback={null}>
-          {/* A bright studio: key from above right, sky fill from the left,
-              and a cool bounce off the white floor. */}
-          <hemisphereLight args={['#e8f2fd', '#c8d4e2', 1.5]} />
-          <directionalLight position={[3.4, 4.6, 2.6]} intensity={2.1} color="#fff6e8" />
-          <directionalLight position={[-3.6, 1.8, -2.4]} intensity={0.85} color="#bcd6f5" />
-          <pointLight position={[0, -1.5, 0.6]} intensity={2.2} distance={5.5} color="#dceaf8" />
+          {/* A studio, lit for the theme it is standing in. The light rig is
+              the same shape either way - key from above right, sky fill from
+              the left, a bounce off the floor - but a white floor under a navy
+              console blows out the readouts printed over it, so in the dark
+              theme the ground goes dark and the bounce comes down with it. */}
+          <hemisphereLight args={dark ? ['#25384f', '#0d1626', 1.15] : ['#e8f2fd', '#c8d4e2', 1.5]} />
+          <directionalLight position={[3.4, 4.6, 2.6]} intensity={dark ? 1.75 : 2.1} color={dark ? '#dce8f8' : '#fff6e8'} />
+          <directionalLight position={[-3.6, 1.8, -2.4]} intensity={0.85} color={dark ? '#5a86c4' : '#bcd6f5'} />
+          <pointLight position={[0, -1.5, 0.6]} intensity={dark ? 1.3 : 2.2} distance={5.5} color={dark ? '#2b4a72' : '#dceaf8'} />
 
           <EngineModel state={state} scale={1.12} />
           <EngineBinding
@@ -235,12 +240,15 @@ export function EngineStage({
           />
           <Rig spin={!hovered} />
 
-          {/* A ground reflection plane so the assembly is not floating. */}
+          {/* A ground plane so the assembly is not floating. */}
           <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.72, 0]}>
             <circleGeometry args={[3.4, 48]} />
-            <meshBasicMaterial color="#eef4fb" transparent opacity={0.9} />
+            <meshBasicMaterial color={dark ? '#0f1a2c' : '#eef4fb'} transparent opacity={0.9} />
           </mesh>
-          <gridHelper args={[7, 28, '#c3d6ea', '#dfe9f4']} position={[0, -0.715, 0]} />
+          <gridHelper
+            args={[7, 28, dark ? '#2b405e' : '#c3d6ea', dark ? '#1d2c44' : '#dfe9f4']}
+            position={[0, -0.715, 0]}
+          />
 
           <OrbitControls
             enablePan={false}

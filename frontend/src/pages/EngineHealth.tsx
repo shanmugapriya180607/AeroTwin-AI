@@ -88,8 +88,8 @@ export default function EngineHealth() {
               {contributors.map((c) => (
                 <div key={c.label}>
                   <div className="row" style={{ justifyContent: 'space-between', marginBottom: 3 }}>
-                    <span className="mono" style={{ fontSize: 10.5, color: 'var(--ink-3)' }}>{c.label}</span>
-                    <span className="mono" style={{ fontSize: 10.5 }}>−{fmt(c.value, 1)}</span>
+                    <span className="mono" style={{ fontSize: 12, color: 'var(--ink-3)' }}>{c.label}</span>
+                    <span className="mono" style={{ fontSize: 12 }}>−{fmt(c.value, 1)}</span>
                   </div>
                   <Meter
                     value={c.value}
@@ -112,7 +112,7 @@ export default function EngineHealth() {
 
         <section className="panel">
           <header className="panel__head">
-            <Thermometer size={13} color="var(--accent)" />
+            <Thermometer size={13} color="var(--accent-ink)" />
             <h2 className="panel__title">Cylinder bank</h2>
             <span className="panel__sub">SELECT TO INSPECT</span>
             <span className="panel__spacer" />
@@ -132,7 +132,7 @@ export default function EngineHealth() {
       <div className="grid" style={{ gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', marginBottom: 16 }}>
         <section className="panel">
           <header className="panel__head">
-            <Flame size={13} color="var(--warn)" />
+            <Flame size={13} color="var(--warn-ink)" />
             <h2 className="panel__title">Cylinder {selected} · CHT</h2>
             <span className="panel__spacer" />
             {cylinder && <StatusBadge status={cylinder.status} />}
@@ -151,7 +151,7 @@ export default function EngineHealth() {
           <header className="panel__head">
             <h2 className="panel__title">Cylinder {selected} · EGT</h2>
                         <span className="panel__spacer" />
-            <span className="mono" style={{ fontSize: 10.5, color: 'var(--residual)' }}>
+            <span className="mono" style={{ fontSize: 12, color: 'var(--residual-ink)' }}>
               {signed(cylinder?.egt_residual, 1)} °C
             </span>
           </header>
@@ -201,8 +201,8 @@ export default function EngineHealth() {
               {(engine?.cylinders ?? []).map((c) => (
                 <div key={c.index}>
                   <div className="row" style={{ justifyContent: 'space-between', marginBottom: 3 }}>
-                    <span className="mono" style={{ fontSize: 10.5, color: 'var(--ink-3)' }}>CYL {c.index}</span>
-                    <span className="mono" style={{ fontSize: 10.5 }}>{fmt(c.margin_to_redline_c, 1)} °C to redline</span>
+                    <span className="mono" style={{ fontSize: 12, color: 'var(--ink-3)' }}>CYL {c.index}</span>
+                    <span className="mono" style={{ fontSize: 12 }}>{fmt(c.margin_to_redline_c, 1)} °C to redline</span>
                   </div>
                   <BipolarBar value={-c.asymmetry_c} range={14} />
                 </div>

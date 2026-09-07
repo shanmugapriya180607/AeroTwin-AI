@@ -13,8 +13,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Play, Rocket, Settings2 } from 'lucide-react'
 import { api } from '../services/api'
-import { AXIS, CHART_BASE, EChart } from '../components/charts/EChart'
-import { CYL_COLORS } from '../components/charts/Charts'
+import { AXIS, CHART_BASE, EChart, chartToken, useChartTheme } from '../components/charts/EChart'
+import { cylColor } from '../components/charts/Charts'
 import {
   Badge, Empty, Kv, Meter, Note, PageHead, Slider, Stat, fmt, signed,
 } from '../components/ui/Primitives'
@@ -64,6 +64,7 @@ export default function Simulation() {
   const summary = result?.summary
   const warnings = result?.warnings ?? []
 
+  const theme = useChartTheme()
   const chartOption = useMemo(() => {
     if (!series.length) return null
     const x = series.map((p: any) => (p.t / 60).toFixed(0))
@@ -71,18 +72,18 @@ export default function Simulation() {
       ...CHART_BASE,
       legend: {
         show: true, top: 0, right: 0, itemWidth: 13, itemHeight: 2,
-        textStyle: { color: '#5a7089', fontSize: 9.5 },
+        textStyle: { color: chartToken('--ink-3', '#3d5471'), fontSize: 11 },
       },
       grid: { left: 50, right: 52, top: 28, bottom: 30 },
       xAxis: {
         type: 'category', data: x, ...AXIS,
-        name: 'MIN', nameTextStyle: { color: '#8496ac', fontSize: 9 },
+        name: 'MIN', nameTextStyle: { color: chartToken('--ink-3', '#3d5471'), fontSize: 11 },
       },
       yAxis: [
-        { type: 'value', ...AXIS, name: '°C', nameTextStyle: { color: '#8496ac', fontSize: 9 }, scale: true },
+        { type: 'value', ...AXIS, name: '°C', nameTextStyle: { color: chartToken('--ink-3', '#3d5471'), fontSize: 11 }, scale: true },
         {
           type: 'value', ...AXIS, name: 'FT',
-          nameTextStyle: { color: '#8496ac', fontSize: 9 },
+          nameTextStyle: { color: chartToken('--ink-3', '#3d5471'), fontSize: 11 },
           splitLine: { show: false },
         },
       ],
@@ -93,7 +94,7 @@ export default function Simulation() {
           data: series.map((p: any) => p.cht[i]),
           showSymbol: false,
           smooth: 0.25,
-          lineStyle: { color: CYL_COLORS[i], width: 1.4 },
+          lineStyle: { color: cylColor(i), width: 1.4 },
         })),
         {
           name: 'CHT EXPECTED (NOMINAL)',
@@ -101,7 +102,7 @@ export default function Simulation() {
           data: series.map((p: any) => p.cht_expected[0]),
           showSymbol: false,
           smooth: 0.25,
-          lineStyle: { color: '#7691b6', width: 1.2, type: 'dashed' },
+          lineStyle: { color: chartToken('--expected', '#7691b6'), width: 1.2, type: 'dashed' },
         },
         {
           name: 'ALTITUDE',
@@ -110,7 +111,7 @@ export default function Simulation() {
           data: series.map((p: any) => p.altitude_ft),
           showSymbol: false,
           smooth: 0.3,
-          lineStyle: { color: '#b2c1d3', width: 1 },
+          lineStyle: { color: chartToken('--ink-5', '#b2c1d3'), width: 1 },
           areaStyle: { color: 'rgba(58,67,79,0.16)' },
         },
       ],
@@ -118,7 +119,7 @@ export default function Simulation() {
       // the caution region is visible rather than needing to be read off.
       markArea: undefined,
     }
-  }, [series])
+  }, [series, theme])
 
   const healthOption = useMemo(() => {
     if (!series.length) return null
@@ -127,11 +128,11 @@ export default function Simulation() {
       grid: { left: 46, right: 44, top: 16, bottom: 26 },
       xAxis: {
         type: 'category', data: series.map((p: any) => (p.t / 60).toFixed(0)), ...AXIS,
-        name: 'MIN', nameTextStyle: { color: '#8496ac', fontSize: 9 },
+        name: 'MIN', nameTextStyle: { color: chartToken('--ink-3', '#3d5471'), fontSize: 11 },
       },
       yAxis: [
-        { type: 'value', ...AXIS, min: 40, max: 100, name: 'HEALTH', nameTextStyle: { color: '#8496ac', fontSize: 9 } },
-        { type: 'value', ...AXIS, name: '°C', nameTextStyle: { color: '#8496ac', fontSize: 9 }, splitLine: { show: false } },
+        { type: 'value', ...AXIS, min: 40, max: 100, name: 'HEALTH', nameTextStyle: { color: chartToken('--ink-3', '#3d5471'), fontSize: 11 } },
+        { type: 'value', ...AXIS, name: '°C', nameTextStyle: { color: chartToken('--ink-3', '#3d5471'), fontSize: 11 }, splitLine: { show: false } },
       ],
       series: [
         {
@@ -140,7 +141,7 @@ export default function Simulation() {
           data: series.map((p: any) => p.projected_health),
           showSymbol: false,
           smooth: 0.3,
-          lineStyle: { color: '#0a6ed6', width: 1.7 },
+          lineStyle: { color: chartToken('--accent', '#0a6ed6'), width: 1.7 },
           areaStyle: {
             color: {
               type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
@@ -158,11 +159,11 @@ export default function Simulation() {
           data: series.map((p: any) => p.residual_max_c),
           showSymbol: false,
           smooth: 0.3,
-          lineStyle: { color: '#7739e0', width: 1.5 },
+          lineStyle: { color: chartToken('--residual', '#7739e0'), width: 1.5 },
         },
       ],
     }
-  }, [series])
+  }, [series, theme])
 
   // mission_risk is a structured verdict, not a label: band, probability,
   // the recommendation that follows from it, and what escalated it.
@@ -190,7 +191,7 @@ export default function Simulation() {
         {/* ---- controls ---------------------------------------------------- */}
         <section className="panel">
           <header className="panel__head">
-            <Settings2 size={13} color="var(--accent)" />
+            <Settings2 size={13} color="var(--accent-ink)" />
             <h2 className="panel__title">Mission profile</h2>
           </header>
           <div className="panel__body">
@@ -267,7 +268,7 @@ export default function Simulation() {
             <h2 className="panel__title">Predicted engine response</h2>
             <span className="panel__spacer" />
             {summary && (
-              <span className="mono" style={{ fontSize: 10.5, color: 'var(--ink-4)' }}>
+              <span className="mono" style={{ fontSize: 12, color: 'var(--ink-4)' }}>
                 {summary.duration_hms} · {summary.samples} samples
               </span>
             )}
@@ -316,7 +317,7 @@ export default function Simulation() {
                 <div>
                   <div className="row" style={{ justifyContent: 'space-between', marginBottom: 4 }}>
                     <span className="micro">TIME IN CAUTION BAND</span>
-                    <span className="mono" style={{ fontSize: 11 }}>{summary?.caution_minutes} min</span>
+                    <span className="mono" style={{ fontSize: 12.5 }}>{summary?.caution_minutes} min</span>
                   </div>
                   <Meter
                     value={summary?.caution_seconds ?? 0}
@@ -327,7 +328,7 @@ export default function Simulation() {
                 <div>
                   <div className="row" style={{ justifyContent: 'space-between', marginBottom: 4 }}>
                     <span className="micro">TIME ABOVE REDLINE</span>
-                    <span className="mono" style={{ fontSize: 11 }}>{summary?.redline_minutes} min</span>
+                    <span className="mono" style={{ fontSize: 12.5 }}>{summary?.redline_minutes} min</span>
                   </div>
                   <Meter
                     value={summary?.redline_seconds ?? 0}

@@ -41,7 +41,7 @@ export function ExplainPanel({ anomaly }: { anomaly: Anomaly | null }) {
   if (!anomaly) {
     return (
       <div style={{ padding: 22, textAlign: 'center' }}>
-        <HelpCircle size={20} color="var(--ink-5)" />
+        <HelpCircle size={20} color="var(--ink-4)" />
         <p className="label" style={{ marginTop: 8 }}>No anomaly selected</p>
       </div>
     )
@@ -60,9 +60,9 @@ export function ExplainPanel({ anomaly }: { anomaly: Anomaly | null }) {
         <div className="row" style={{ marginBottom: 6 }}>
           <AlertTriangle
             size={15}
-            color={anomaly.severity === 'HIGH' ? 'var(--crit)' : 'var(--warn)'}
+            color={anomaly.severity === 'HIGH' ? 'var(--crit-ink)' : 'var(--warn-ink)'}
           />
-          <span style={{ fontSize: 15, fontWeight: 600, letterSpacing: '0.06em' }}>{anomaly.title}</span>
+          <span style={{ fontSize: 16, fontWeight: 600, letterSpacing: '0.06em' }}>{anomaly.title}</span>
           <span className="spacer" />
           <Badge tone={anomaly.severity === 'HIGH' ? 'crit' : anomaly.severity === 'MEDIUM' ? 'warn' : 'caution'}>
             {anomaly.severity}
@@ -137,7 +137,7 @@ export function ExplainPanel({ anomaly }: { anomaly: Anomaly | null }) {
         <span className="micro">LIKELY MECHANISM</span>
         <div
           style={{
-            fontSize: 15,
+            fontSize: 16,
             fontWeight: 600,
             marginTop: 5,
             color: anomaly.abstained ? 'var(--ink-3)' : 'var(--ink)',
@@ -159,7 +159,7 @@ export function ExplainPanel({ anomaly }: { anomaly: Anomaly | null }) {
           <div className="row" style={{ marginBottom: 6 }}>
             <span className="label">CONFIDENCE</span>
             <span className="spacer" />
-            <span className="mono" style={{ fontSize: 13 }}>{pct(anomaly.confidence, 1)}</span>
+            <span className="mono" style={{ fontSize: 14 }}>{pct(anomaly.confidence, 1)}</span>
           </div>
           <Meter
             value={(anomaly.confidence ?? 0) * 100}

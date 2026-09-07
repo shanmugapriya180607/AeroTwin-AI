@@ -54,9 +54,9 @@ export function CylinderTile({
           className="micro"
           style={{
             color:
-              cylinder.status === 'NORMAL' ? 'var(--ok)'
-                : cylinder.status === 'DEGRADING' ? 'var(--caution)'
-                  : cylinder.status === 'WARNING' ? 'var(--warn)' : 'var(--crit)',
+              cylinder.status === 'NORMAL' ? 'var(--ok-ink)'
+                : cylinder.status === 'DEGRADING' ? 'var(--caution-ink)'
+                  : cylinder.status === 'WARNING' ? 'var(--warn-ink)' : 'var(--crit-ink)',
           }}
         >
           {cylinder.status}
@@ -65,7 +65,7 @@ export function CylinderTile({
 
       <div className="stat stat--sm" style={{ marginBottom: 7 }}>
         <span className="stat__k">CHT actual</span>
-        <span className="stat__v" style={{ fontSize: 18 }}>
+        <span className="stat__v" style={{ fontSize: 19 }}>
           {fmt(cylinder.cht_observed, 1)}<span className="stat__u">°C</span>
         </span>
       </div>
@@ -73,13 +73,13 @@ export function CylinderTile({
       <div style={{ display: 'grid', gap: 4, marginBottom: 8 }}>
         <div className="row row--tight" style={{ justifyContent: 'space-between' }}>
           <span className="micro">EXPECTED</span>
-          <span className="mono" style={{ fontSize: 11, color: 'var(--expected)' }}>
+          <span className="mono" style={{ fontSize: 12.5, color: 'var(--expected-ink)' }}>
             {fmt(cylinder.cht_expected, 1)} °C
           </span>
         </div>
         <div className="row row--tight" style={{ justifyContent: 'space-between' }}>
           <span className="micro">RESIDUAL</span>
-          <span className="mono" style={{ fontSize: 11, color: 'var(--residual)' }}>
+          <span className="mono" style={{ fontSize: 12.5, color: 'var(--residual-ink)' }}>
             {signed(cylinder.cht_residual, 1)} °C
           </span>
         </div>
@@ -89,8 +89,8 @@ export function CylinderTile({
             <span
               className="mono"
               style={{
-                fontSize: 11,
-                color: Math.abs(cylinder.asymmetry_c) > 5 ? 'var(--crit)' : 'var(--ink-2)',
+                fontSize: 12.5,
+                color: Math.abs(cylinder.asymmetry_c) > 5 ? 'var(--crit-ink)' : 'var(--ink-2)',
               }}
             >
               {signed(cylinder.asymmetry_c, 1)} °C
@@ -105,7 +105,7 @@ export function CylinderTile({
         <div style={{ marginTop: 9 }}>
           <div className="row row--tight" style={{ justifyContent: 'space-between', marginBottom: 4 }}>
             <span className="micro">HEALTH</span>
-            <span className="mono" style={{ fontSize: 11 }}>{fmt(cylinder.health, 1)}</span>
+            <span className="mono" style={{ fontSize: 12.5 }}>{fmt(cylinder.health, 1)}</span>
           </div>
           <Meter
             value={cylinder.health}

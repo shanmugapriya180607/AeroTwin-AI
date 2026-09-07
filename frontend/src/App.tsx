@@ -20,6 +20,7 @@ import { Splash } from './components/brand/Splash'
 const IntroExperience = lazy(() =>
   import('./components/intro/IntroExperience').then((m) => ({ default: m.IntroExperience })),
 )
+const HowItWorks = lazy(() => import('./pages/HowItWorks'))
 const UavShowcase = lazy(() => import('./pages/UavShowcase'))
 const Console = lazy(() => import('./Console'))
 
@@ -34,11 +35,22 @@ function IntroRoute() {
         <IntroExperience
           onEnter={() => {
             setIntroPhase('READY')
-            navigate('/uav')
+            /* First entry runs film -> method -> aircraft -> console. Each
+               step carries its own way out, so nobody is held here. */
+            navigate('/how')
           }}
         />
       </Suspense>
     </RenderBoundary>
+  )
+}
+
+/** The method, between the film and the aircraft. */
+function HowRoute() {
+  return (
+    <Suspense fallback={<Splash />}>
+      <HowItWorks />
+    </Suspense>
   )
 }
 
@@ -85,6 +97,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/intro" element={<IntroRoute />} />
+      <Route path="/how" element={<HowRoute />} />
       <Route path="/uav" element={<ShowcaseRoute />} />
       <Route path="*" element={<ConsoleRoute />} />
     </Routes>

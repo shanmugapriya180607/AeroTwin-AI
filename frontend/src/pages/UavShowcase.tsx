@@ -16,7 +16,7 @@ import { useNavigate } from 'react-router-dom'
 import { Canvas } from '@react-three/fiber'
 import { AnimatePresence, motion } from 'framer-motion'
 import * as THREE from 'three'
-import { ArrowRight, RotateCcw } from 'lucide-react'
+import { ArrowRight, RotateCcw, SkipForward } from 'lucide-react'
 import { useTwin } from '../store/useTwin'
 import { hasWebGL } from '../services/capability'
 import { RenderBoundary } from '../components/ui/Boundary'
@@ -35,6 +35,56 @@ const ENGINE_VIEWS: Array<{ id: EngineViewMode; label: string }> = [
 ]
 
 const NO_CYLINDERS: CylinderHealth[] = []
+
+/**
+ * What each component is, in the fewest words that are still true.
+ *
+ * Nothing here is a specification. The console does not know this airframe's
+ * dimensions, endurance or payload and must not appear to - so every line is
+ * either a fact the twin actually models or a statement about what is
+ * measured. The channel list is the real one: the same keys the telemetry
+ * screen streams.
+ */
+const DETAIL: Record<Hotspot, { title: string; lines: string[] }> = {
+  ENGINE: {
+    title: 'Engine',
+    lines: [
+      'Four-cylinder, horizontally opposed, air cooled.',
+      'The subject of the digital twin.',
+      'Modelled per cylinder, not as one unit.',
+    ],
+  },
+  PROPULSION: {
+    title: 'Propulsion',
+    lines: [
+      'Propeller driven directly by the piston engine.',
+      'Shaft speed is a monitored channel.',
+    ],
+  },
+  SENSOR: {
+    title: 'Sensors',
+    lines: [
+      'EGT x4 · CHT x4',
+      'RPM · manifold pressure',
+      'Oil pressure · oil temperature',
+      'Fuel flow',
+    ],
+  },
+  WING: {
+    title: 'Flight system',
+    lines: [
+      'Altitude, airspeed and outside air temperature.',
+      'The conditions the twin normalises against.',
+    ],
+  },
+  FUEL: {
+    title: 'Telemetry',
+    lines: [
+      'Live engine and flight-condition data.',
+      'One frame a second, into the twin.',
+    ],
+  },
+}
 
 /**
  * The showcase without a GPU.
@@ -95,10 +145,11 @@ export default function UavShowcase() {
   const anomalyIndex = flagged?.cylinder ?? 0
   const sync = telemetry?.engine?.sync_pct ?? 99.3
 
-  const enterDashboard = () => {
+  const leaveTo = (to: string) => {
     setLeaving(true)
-    window.setTimeout(() => navigate('/dashboard'), 620)
+    window.setTimeout(() => navigate(to), 620)
   }
+  const enterDashboard = () => leaveTo('/dashboard')
 
   const readouts: Array<[string, string, string?]> = [
     ['ALT', (mission?.altitude_ft ?? 14000).toLocaleString(), 'FT'],
@@ -167,6 +218,10 @@ export default function UavShowcase() {
           AERO-01
         </span>
         {mode === 'DEMO' && <span className="showcase__src">DEMO TELEMETRY</span>}
+        {/* The last step of first entry still has a way out of it. */}
+        <button className="showcase__skip" onClick={enterDashboard}>
+          Skip <SkipForward size={13} strokeWidth={2} />
+        </button>
       </header>
 
       {/* component rail */}
@@ -228,6 +283,29 @@ export default function UavShowcase() {
         )}
       </AnimatePresence>
 
+      {/* what the selected component is */}
+      <AnimatePresence>
+        {selected && (
+          <motion.aside
+            className="showcase__detail"
+            initial={{ opacity: 0, x: -16 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -16 }}
+            transition={{ duration: 0.3, ease: EASE }}
+          >
+            <h2 className="showcase__detail-title">{DETAIL[selected].title}</h2>
+            <ul className="showcase__detail-list">
+              {DETAIL[selected].lines.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+            {selected === 'ENGINE' && anomalyIndex > 0 && (
+              <span className="showcase__detail-flag">CYL {anomalyIndex} DEVIATING</span>
+            )}
+          </motion.aside>
+        )}
+      </AnimatePresence>
+
       {/* live readout */}
       <div className="showcase__data">
         {readouts.map(([k, v, u]) => (
@@ -242,7 +320,7 @@ export default function UavShowcase() {
       </div>
 
       <button className="showcase__enter" onClick={enterDashboard}>
-        OPEN DIGITAL TWIN
+        CONTINUE TO AEROTWIN
         <ArrowRight size={15} strokeWidth={2} />
       </button>
 
