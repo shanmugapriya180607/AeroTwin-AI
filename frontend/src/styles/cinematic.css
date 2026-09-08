@@ -61,12 +61,40 @@
    1. First-entry film
    ========================================================================== */
 
+/*
+ * The film runs in daylight whichever theme the console is in.
+ *
+ * It is a rendered scene, not a surface, so the sky behind this overlay never
+ * darkens - which meant every piece of chrome that read the ink ramp inverted
+ * underneath it and the chapter rail disappeared into the clouds. Rather than
+ * chase each descendant, the daylight palette is bound here and everything
+ * nested resolves against it: the wordmark, the skip pill, the letterbox
+ * bars, the chapter rail and the provenance line.
+ *
+ * Only tokens whose meaning is "against the scene" are rebound. Status hues
+ * are left alone - a critical residual is the same red in both themes.
+ */
 .intro {
   position: fixed;
   inset: 0;
   z-index: 90;
   background: var(--stage-bg);
   overflow: hidden;
+
+  --ink: var(--film-ink);
+  --ink-2: var(--film-ink-2);
+  --ink-3: var(--film-ink-2);
+  --ink-4: var(--film-ink-2);
+  --accent-ink: var(--film-accent);
+  --glass: var(--film-glass);
+  --glass-soft: var(--film-glass);
+  --hairline-strong: var(--film-rule);
+  --hairline: var(--film-rule);
+  /* The letterbox bands wash the scene out, they do not darken it. */
+  --scrim-1: rgba(255, 255, 255, 0.34);
+  --scrim-2: rgba(255, 255, 255, 0.78);
+  --scrim-3: rgba(255, 255, 255, 0.92);
+  --scrim-edge: rgba(255, 255, 255, 0);
 }
 
 .intro-preload {
@@ -137,10 +165,11 @@
   border-radius: 100px;
   background: var(--glass-soft);
   backdrop-filter: blur(8px);
-  color: var(--ink-3);
+  color: var(--film-ink);
   font-family: var(--mono);
-  font-size: 11px;
-  letter-spacing: 0.22em;
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
   transition: all var(--fast) var(--ease);
 }
 
@@ -173,9 +202,9 @@
 .intro__timecode,
 .intro__pillar {
   text-shadow:
-    0 0 3px var(--halo),
-    0 0 8px var(--halo-soft),
-    0 1px 2px var(--halo);
+    0 0 3px var(--film-halo),
+    0 0 9px var(--film-halo-soft),
+    0 1px 2px var(--film-halo);
 }
 
 .intro__chapter {
@@ -183,26 +212,26 @@
   align-items: center;
   gap: 10px;
   font-family: var(--mono);
-  font-size: 10.5px;
-  letter-spacing: 0.2em;
-  color: var(--ink-3);
-  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 0.18em;
+  color: var(--film-ink);
+  font-weight: 700;
   transition: color var(--fast) var(--ease);
 }
 
-.intro__chapter:hover { color: var(--ink-2); }
+.intro__chapter:hover { color: var(--film-accent); }
 
 .intro__chapter-dot {
-  width: 5px;
-  height: 5px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
-  border: 1px solid var(--ink-5);
+  border: 1.5px solid var(--film-ink-2);
   flex: none;
   transition: all var(--mid) var(--ease);
 }
 
-.intro__chapter.is-done .intro__chapter-dot { background: var(--ink-4); border-color: var(--ink-4); }
-.intro__chapter.is-active { color: var(--accent-ink); }
+.intro__chapter.is-done .intro__chapter-dot { background: var(--film-ink-2); border-color: var(--film-ink-2); }
+.intro__chapter.is-active { color: var(--film-accent); }
 .intro__chapter.is-active .intro__chapter-dot {
   background: var(--accent);
   border-color: var(--accent);
@@ -210,6 +239,10 @@
 }
 
 .intro__chapter-label { opacity: 1; }
+
+/* A chapter still ahead is quieter, not invisible - the rail is the map of
+   what is coming, and a map you can only read one line of is not a map. */
+.intro__chapter:not(.is-active):not(.is-done) { color: var(--film-ink-2); }
 
 /* ---- the act label, lower left --------------------------------------- */
 
@@ -222,20 +255,21 @@
 
 .intro__title {
   font-size: 52px;
-  font-weight: 200;
+  font-weight: 300;
   letter-spacing: 0.14em;
   line-height: 1;
-  color: var(--ink);
+  color: var(--film-ink);
   text-transform: uppercase;
 }
 
 .intro__marker {
   margin-top: 14px;
   font-family: var(--mono);
-  font-size: 12px;
-  letter-spacing: 0.34em;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.3em;
   text-transform: uppercase;
-  color: var(--accent-ink);
+  color: var(--film-accent);
 }
 
 /* ---- the centred reveal ---------------------------------------------- */
@@ -271,9 +305,10 @@
 
 .intro__pillar {
   font-family: var(--mono);
-  font-size: 12px;
-  letter-spacing: 0.34em;
-  color: var(--ink-2);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  color: var(--film-ink);
   position: relative;
 }
 
@@ -329,12 +364,15 @@
 .intro__prov,
 .intro__timecode {
   font-family: var(--mono);
-  font-size: 10.5px;
-  letter-spacing: 0.22em;
-  color: var(--ink-3);
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: var(--film-ink-2);
 }
 
-.intro__prov { color: var(--simulated-ink); opacity: 0.95; }
+/* The one sentence on the film that must never be missed: it is what stops a
+   rendered explanation being taken for measured flight data. Full strength. */
+.intro__prov { color: var(--film-ink); opacity: 1; }
 
 .intro__progress {
   position: absolute;

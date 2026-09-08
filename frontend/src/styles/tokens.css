@@ -91,6 +91,22 @@
     rgba(255, 255, 255, 0.42) 78%,
     rgba(255, 255, 255, 0.1) 100%);
 
+
+  /* -- the film -----------------------------------------------------------
+     The intro sequence flies a daylight sky, and it flies the same daylight
+     sky whichever theme the console is in - it is a rendered scene, not a
+     surface. So its overlay type cannot ride the ink ramp: in the dark theme
+     that ramp inverts to near-white and the chapter rail vanished into the
+     clouds. These are fixed dark values, stated once, and the halo under them
+     is white in both themes for the same reason. */
+  --film-ink: #06111f;      /* 18.4:1 on the sky - chapter labels, titles   */
+  --film-ink-2: #1d3350;   /* 12.3:1 - the provenance and timecode lines  */
+  --film-accent: #064a9e;   /* the active chapter and the markers           */
+  --film-glass: rgba(255, 255, 255, 0.84);
+  --film-rule: rgba(6, 17, 31, 0.26);
+  --film-halo: rgba(255, 255, 255, 0.96);
+  --film-halo-soft: rgba(255, 255, 255, 0.85);
+
   /* -- ink -------------------------------------------------------------- */
   /*
     The ink ramp is a *text* ramp: every tier from --ink to --ink-4 clears
