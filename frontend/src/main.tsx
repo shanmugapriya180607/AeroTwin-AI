@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom'
 import App from './App'
 import { simClock, simulation } from './simulation'
 import { useTwin } from './store/useTwin'
+import { flightDynamics } from './components/uav/flight'
 import { bootTheme } from './store/useSettings'
 import './styles/tokens.css'
 import './styles/base.css'
@@ -27,10 +28,13 @@ declare global {
       simulation: typeof simulation
       simClock: typeof simClock
       store: typeof useTwin
+      /** The aircraft. The thing most worth being able to inspect when the
+       *  marker and the telemetry disagree about where it is. */
+      flight: typeof flightDynamics
     }
   }
 }
-window.__aerotwin = { simulation, simClock, store: useTwin }
+window.__aerotwin = { simulation, simClock, store: useTwin, flight: flightDynamics }
 
 /* Before the first paint, so a dark-theme operator never sees a white flash. */
 bootTheme()

@@ -347,6 +347,8 @@ function Scene({
   const reconcileTimer = useRef(0)
   /** So "approaching base" is logged once per recall, not once per frame. */
   const approaching = useRef(false)
+  /** Previous range to base, for spotting the turn at closest approach. */
+  const lastRange = useRef(Infinity)
 
   useFrame((_, delta) => {
     // Clamped so a stalled tab cannot integrate a huge step, but generous
@@ -382,9 +384,32 @@ function Scene({
        reads it at, identically at 1x and 200x. Pause still freezes it: this
        whole callback returns early when the clock is stopped. */
     const scale = flightDynamics.groundHold ? 1 : Math.max(0.05, simClock.speed || 1)
-    const frame = Math.min(0.5, delta) * scale
-    const steps = Math.max(1, Math.min(16, Math.ceil(frame / 0.05)))
-    const dt = frame / steps
+    const want = Math.min(0.5, delta) * scale
+    /*
+     * The sub-step is capped, not the step count.
+     *
+     * Dividing the frame by a fixed maximum number of steps let `dt` grow with
+     * the simulation rate - 0.125 s at 20x on a slow frame, 6.25 s at 200x.
+     * The altitude term is a discrete exponential approach, `error * 0.65 * dt`,
+     * which only converges while dt stays under about 1.5 s; past that every
+     * step overshoots by more than it corrects and the oscillation diverges.
+     * That is what put thirty-seven thousand feet on the corner card against a
+     * commanded fourteen.
+     *
+     * So the step size is fixed and the count is what varies. When the cap
+     * binds, the model integrates less than the full frame and lags the ground
+     * station slightly - which the reconciler already exists to absorb, and
+     * which is far better than an unstable integrator.
+     */
+    const MAX_STEP = 0.05
+    /* The count is generous because the step is what has to stay small, and a
+       step is a dozen float operations - eighty of them per frame is nothing
+       next to the render. Capping the count instead was throttling the model
+       to about eight times real time however high the rate selector went, so
+       60x and 200x closed on a waypoint at exactly the same speed as 20x. */
+    const steps = Math.max(1, Math.min(80, Math.ceil(want / MAX_STEP)))
+    const dt = Math.min(MAX_STEP, want / steps)
+    const frame = dt * steps
     if (dt <= 0) return
 
     // Command altitude and speed from the twin's live telemetry, falling back
@@ -422,8 +447,14 @@ function Scene({
         | Array<{ id: string; x: number; y: number }> | null | undefined
       const home = wp?.find((w) => w.id === 'BASE') ?? { x: 18, y: 22 }
       const rangeKm = dynamics.distanceTo(home.x, home.y)
+      /* Hold the recall altitude until the profile descends to meet it, then
+         follow it down. Capping against the altitude at recall is what makes
+         that a descent: without it, a profile computed from a long range sits
+         above the aircraft and the "descent" commands a climb - which is
+         exactly what it did, taking a recall from 13,000 ft up past 28,000. */
+      const ceiling = dynamics.divertCeilingFt || dynamics.state.altitudeFt
       const profileFt = Math.max(leg?.altitudeFt ?? 900, rangeKm * 318)
-      commanded.current.alt = Math.min(dynamics.state.altitudeFt + 200, profileFt)
+      commanded.current.alt = Math.min(ceiling, profileFt)
       commanded.current.speed = leg?.speedKt ?? 96
     } else {
       commanded.current.alt = liveAlt && liveAlt > 50 ? liveAlt : leg?.altitudeFt ?? 900
@@ -468,17 +499,32 @@ function Scene({
         approaching.current = true
         twin.logEvent('INFO', 'UAV approaching base')
       }
-      /* Arrival is over the field *and* down.
-         Range alone declared the sortie closed with the aircraft still at six
-         thousand feet - the panel said "on the ground at base" under a corner
-         card reading AIRBORNE. Reaching the overhead is not landing. */
-      if (range < 2.2 && dynamics.state.altitudeFt <= 1200) {
+      /*
+       * Arrival is closest approach, not a radius.
+       *
+       * Two faults with a radius test. It declared the sortie closed on
+       * horizontal range alone, so the panel read "on the ground at base"
+       * under a corner card showing six thousand feet - reaching the overhead
+       * is not landing. And at 200x the aircraft covers about three kilometres
+       * between frames, so it tunnelled straight through a 2.2 km gate and
+       * flew out the far side still returning.
+       *
+       * Watching the range turn instead cannot be skipped at any speed: the
+       * frame the aircraft starts receding is the frame it passed the field.
+       * It still has to be low, and if it is not, nothing fires - the model
+       * keeps steering at BASE, comes round again, and by then the descent
+       * profile has brought it down.
+       */
+      const receding = range > lastRange.current + 0.01
+      lastRange.current = range
+      if ((range < 2.2 || (receding && range < 14)) && dynamics.state.altitudeFt <= 1500) {
         approaching.current = false
         // Down. The readings should say so rather than freezing mid-approach.
         dynamics.state.altitudeFt = 0
         dynamics.state.speedKt = 0
         dynamics.state.pitch = 0
         dynamics.frozen = true
+        lastRange.current = Infinity
         useTwin.setState({ missionPhase: 'COMPLETED' })
         twin.logEvent('INFO', 'UAV reached base')
         twin.logEvent('INFO', 'Mission safely completed')

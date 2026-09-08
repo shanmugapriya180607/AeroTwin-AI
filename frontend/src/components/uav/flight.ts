@@ -84,6 +84,9 @@ export class FlightDynamics {
   /** True once the planned route has been replaced by a diversion, so a
    *  sector update cannot quietly put the aircraft back on the mission. */
   diverted = false
+  /** The altitude the aircraft was at when it was recalled. The descent
+   *  profile is capped by this so a recall can never command a climb. */
+  divertCeilingFt = 0
   private plan: RouteLeg[] = []
   private route: RouteLeg[] = []
   private target = 0
@@ -228,7 +231,14 @@ export class FlightDynamics {
     const altError = altTarget - s.altitudeFt
     const maxDown = this.diverted ? DIVERT_DESCENT_FPS : MAX_DESCENT_FPS
     const climbRate = Math.max(-maxDown, Math.min(MAX_CLIMB_FPS, altError * 0.65))
-    s.altitudeFt += climbRate * dt
+    /* Never past the target. The rate is an exponential approach, so with a
+       large enough step it would sail through the commanded altitude and come
+       back harder - clamping the increment to the error left makes that
+       impossible whatever the timestep turns out to be. */
+    const climbStep = climbRate * dt
+    s.altitudeFt += Math.sign(altError) === Math.sign(climbStep)
+      ? Math.sign(altError) * Math.min(Math.abs(climbStep), Math.abs(altError))
+      : climbStep
     s.pitch += ((climbRate / 2600) - s.pitch) * Math.min(1, dt * 1.4)
     s.pitch = Math.max(-0.16, Math.min(0.2, s.pitch))
 
@@ -292,6 +302,7 @@ export class FlightDynamics {
     ]
     this.route = leg
     this.diverted = true
+    this.divertCeilingFt = here.altitudeFt
     this.target = 1
     this.travelled = 0
     this.totalLength = Math.hypot(base.x - here.position.x, base.y - here.position.z) || 1
@@ -306,6 +317,7 @@ export class FlightDynamics {
   /** Put the aircraft back on the planned mission route. */
   restorePlan() {
     this.diverted = false
+    this.divertCeilingFt = 0
     this.frozen = false
     if (this.plan.length) {
       this.route = this.plan
