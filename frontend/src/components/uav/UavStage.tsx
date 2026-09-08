@@ -384,8 +384,27 @@ function Scene({
     const leg = dynamics.activeLeg
     const liveAlt = mission?.altitude_ft ?? telemetry?.tick.inputs?.altitude_ft
     const liveIas = mission?.ias_kt ?? telemetry?.tick.inputs?.ias_kt
-    commanded.current.alt = liveAlt && liveAlt > 50 ? liveAlt : leg?.altitudeFt ?? 900
-    commanded.current.speed = liveIas && liveIas > 5 ? liveIas : leg?.speedKt ?? 80
+    /*
+     * A recalled aircraft flies its own profile.
+     *
+     * Altitude and speed are normally slaved to the ground station, which is
+     * the right default - the telemetry is the authority on what the engine is
+     * doing. But the ground station is still flying its own sortie: it does
+     * not know the aircraft has been recalled, so it keeps commanding the ISR
+     * cruise altitude. Left slaved, a recall changed the ground track and
+     * nothing else, and the console showed an aeroplane heading home at
+     * fourteen thousand feet in an ISR loiter.
+     *
+     * While diverted the diversion leg owns both, so the aircraft descends
+     * toward the field the way it is actually being flown.
+     */
+    if (dynamics.diverted) {
+      commanded.current.alt = leg?.altitudeFt ?? 900
+      commanded.current.speed = leg?.speedKt ?? 96
+    } else {
+      commanded.current.alt = liveAlt && liveAlt > 50 ? liveAlt : leg?.altitudeFt ?? 900
+      commanded.current.speed = liveIas && liveIas > 5 ? liveIas : leg?.speedKt ?? 80
+    }
 
     let state = dynamics.state
     for (let i = 0; i < steps; i += 1) {

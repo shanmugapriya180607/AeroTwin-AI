@@ -169,6 +169,9 @@ export default function MissionControl() {
   const sector = useTwin((s) => s.sector)
   const enterMission = useTwin((s) => s.enterMission)
   const rtbRoute = useTwin((s) => s.rtbRoute)
+  const missionPhase = useTwin((s) => s.missionPhase)
+  const diverted = missionPhase === 'RETURNING_TO_BASE' || missionPhase === 'COMPLETED'
+
   const [sectorData, setSectorData] = useState<any>(sector)
 
   useEffect(() => {
@@ -181,6 +184,20 @@ export default function MissionControl() {
 
   const engine = telemetry?.engine
   const position = mission?.mission?.position
+  /* Sampled once per render rather than per frame: this panel re-renders on
+     each telemetry frame, which is often enough for a descent to read as one
+     without putting the whole page on the animation loop. */
+  const air = diverted
+    ? {
+      altitudeFt: flightDynamics.state.altitudeFt,
+      speedKt: flightDynamics.state.speedKt,
+      heading: ((flightDynamics.state.heading * 180) / Math.PI + 360) % 360,
+    }
+    : {
+      altitudeFt: mission?.altitude_ft ?? 0,
+      speedKt: mission?.ias_kt ?? 0,
+      heading: position?.heading ?? 0,
+    }
   const waypoints = sectorData?.waypoints ?? []
 
   return (
@@ -223,13 +240,18 @@ export default function MissionControl() {
               <Navigation size={13} color="var(--accent-ink)" />
               <h2 className="panel__title">Flight state</h2>
               <span className="panel__spacer" />
-              <Badge tone="ok" dot live>{telemetry?.tick?.phase ?? '—'}</Badge>
+              <Badge tone={diverted ? 'caution' : 'ok'} dot live>
+                {diverted ? 'RTB' : telemetry?.tick?.phase ?? '—'}
+              </Badge>
             </header>
             <div className="panel__body">
               <div className="grid grid--2" style={{ gap: 14 }}>
-                <Stat k="Altitude" v={(mission?.altitude_ft ?? 0).toLocaleString()} unit="ft" />
-                <Stat k="IAS" v={fmt(mission?.ias_kt, 0)} unit="kt" />
-                <Stat k="Heading" v={fmt(position?.heading, 0)} unit="°" />
+                {/* Under a recall the aircraft is flying a profile the ground
+                    station does not know about, so these come off the flight
+                    model. Anywhere else the telemetry is the authority. */}
+                <Stat k="Altitude" v={Math.round(air.altitudeFt).toLocaleString()} unit="ft" />
+                <Stat k="IAS" v={fmt(air.speedKt, 0)} unit="kt" />
+                <Stat k="Heading" v={fmt(air.heading, 0)} unit="°" />
                 <Stat k="RPM" v={(mission?.rpm ?? 0).toLocaleString()} />
                 <Stat k="OAT" v={fmt(mission?.oat_c, 1)} unit="°C" />
                 <Stat k="Power" v={fmt(mission?.power_pct, 0)} unit="%" />
@@ -237,7 +259,7 @@ export default function MissionControl() {
               <div className="divider" />
               <Kv
                 items={[
-                  ['Current leg', position?.leg ?? '—'],
+                  ['Current leg', diverted ? 'DIRECT TO BASE' : position?.leg ?? '—'],
                   ['Distance to base', `${fmt(position?.distance_to_base_km, 1)} km`],
                   ['Elapsed', clock(mission?.mission?.elapsed_s)],
                   ['Planned', clock(mission?.mission?.duration_s)],

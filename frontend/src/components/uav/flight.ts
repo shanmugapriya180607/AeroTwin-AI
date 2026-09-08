@@ -24,6 +24,20 @@ const GROUND_CLEARANCE = 0.36
 const MAX_CLIMB_FPS = 900
 const MAX_DESCENT_FPS = 1100
 
+/*
+ * Descent rate under a recall.
+ *
+ * The limits above are not flight-model figures; they exist so the aircraft
+ * can catch up with a ground station running at twenty times real time, and at
+ * 1100 ft/s a recall from the ISR orbit is over before the eye registers it.
+ *
+ * A diversion is the one case the console is flying on its own authority, so
+ * it gets a rate an aeroplane would actually use: 1500 ft/min. Simulated time
+ * is still scaled, so that is roughly half a minute of wall clock from cruise
+ * to circuit height - long enough to watch, short enough to demonstrate.
+ */
+const DIVERT_DESCENT_FPS = 25
+
 export interface RouteLeg {
   id: string
   x: number
@@ -184,7 +198,8 @@ export class FlightDynamics {
     // still limited, so the motion reads as a climb rather than a jump.
     const altTarget = Math.max(0, commandedAltFt)
     const altError = altTarget - s.altitudeFt
-    const climbRate = Math.max(-MAX_DESCENT_FPS, Math.min(MAX_CLIMB_FPS, altError * 0.65))
+    const maxDown = this.diverted ? DIVERT_DESCENT_FPS : MAX_DESCENT_FPS
+    const climbRate = Math.max(-maxDown, Math.min(MAX_CLIMB_FPS, altError * 0.65))
     s.altitudeFt += climbRate * dt
     s.pitch += ((climbRate / 2600) - s.pitch) * Math.min(1, dt * 1.4)
     s.pitch = Math.max(-0.16, Math.min(0.2, s.pitch))
@@ -240,6 +255,9 @@ export class FlightDynamics {
         id: 'BASE',
         x: base.x,
         y: base.y,
+        // Circuit height at the field. The model's own rate limiter turns the
+        // difference into a steady descent rather than a drop - a recall from
+        // the ISR orbit is a long way down and has to read as a descent.
         altitudeFt: base.altitudeFt ?? 900,
         speedKt: base.speedKt ?? 96,
       },
