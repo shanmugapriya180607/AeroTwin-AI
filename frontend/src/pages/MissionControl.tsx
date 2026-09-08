@@ -11,13 +11,14 @@ import { Compass, Maximize2, Navigation } from 'lucide-react'
 import { api } from '../services/api'
 import { useTwin } from '../store/useTwin'
 import { flightDynamics } from '../components/uav/flight'
+import { OperatorCommand } from '../components/mission/OperatorCommand'
 import {
   Badge, Empty, Kv, Meter, Note, PageHead, Stat, StatusBadge, clock, fmt, pct,
 } from '../components/ui/Primitives'
 
 const VIEW = { w: 220, h: 190, pad: 12 }
 
-function SectorMap({ sector }: { sector: any }) {
+function SectorMap({ sector, rtbRoute }: { sector: any; rtbRoute: Array<{ x: number; y: number }> | null }) {
   const svgRef = useRef<SVGSVGElement>(null)
   const uavRef = useRef<SVGGElement>(null)
   const trackRef = useRef<SVGPolylineElement>(null)
@@ -102,6 +103,29 @@ function SectorMap({ sector }: { sector: any }) {
       />
       <polyline points={orbitPoints} fill="none" stroke="rgba(119,57,224,0.5)" strokeWidth="0.6" />
 
+      {/* the diversion, when one has been ordered */}
+      {rtbRoute && rtbRoute.length > 1 && (
+        <g>
+          <polyline
+            points={rtbRoute.map((p) => `${p.x},${VIEW.h - p.y}`).join(' ')}
+            fill="none"
+            stroke="rgba(217,154,0,0.9)"
+            strokeWidth="1.1"
+            strokeLinecap="round"
+          />
+          <text
+            x={(rtbRoute[0].x + rtbRoute[1].x) / 2 + 2}
+            y={VIEW.h - (rtbRoute[0].y + rtbRoute[1].y) / 2 - 2}
+            fontSize="3.4"
+            fill="#8a6200"
+            fontWeight="700"
+            letterSpacing="0.3"
+          >
+            RTB
+          </text>
+        </g>
+      )}
+
       {/* flown track */}
       <polyline ref={trackRef} points="" fill="none" stroke="rgba(11,26,46,0.5)" strokeWidth="0.65" />
 
@@ -144,6 +168,7 @@ export default function MissionControl() {
   const telemetry = useTwin((s) => s.telemetry)
   const sector = useTwin((s) => s.sector)
   const enterMission = useTwin((s) => s.enterMission)
+  const rtbRoute = useTwin((s) => s.rtbRoute)
   const [sectorData, setSectorData] = useState<any>(sector)
 
   useEffect(() => {
@@ -184,11 +209,15 @@ export default function MissionControl() {
             </span>
           </header>
           <div className="panel__body panel__body--flush" style={{ minHeight: 400 }}>
-            {sectorData ? <SectorMap sector={sectorData} /> : <div className="skeleton" style={{ height: 400 }} />}
+            {sectorData
+              ? <SectorMap sector={sectorData} rtbRoute={rtbRoute} />
+              : <div className="skeleton" style={{ height: 400 }} />}
           </div>
         </section>
 
         <div className="stack">
+          <OperatorCommand />
+
           <section className="panel">
             <header className="panel__head">
               <Navigation size={13} color="var(--accent-ink)" />

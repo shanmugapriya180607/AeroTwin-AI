@@ -21,6 +21,8 @@ import { connectAll, topicSocket, type SocketState } from '../services/ws'
 import {
   LiveTransport, LocalTransport, simulation, type SimulationSnapshot,
 } from '../simulation'
+import { flightDynamics } from '../components/uav/flight'
+import type { OperatorCommand } from '../mission/decision'
 import type {
   AlertFrame, Anomaly, EventEntry, MissionFrame, ResidualFrame, Sector,
   SystemStatus, TelemetryFrame,
@@ -36,6 +38,20 @@ export type IntroPhase = 'BOOT' | 'READY'
 /** The persistent 3D stage parks either in the corner card or in the Command
  *  Center hero. Both are the same never-unmounted canvas. */
 export type Dock = 'CORNER' | 'HERO'
+
+/**
+ * Where the sortie is, as the operator sees it.
+ *
+ * Distinct from the simulation engine's own status, which describes a
+ * transport - is a stream advancing, is it held. This describes the mission:
+ * flying the plan, recalled, stopped where it stands, or finished.
+ */
+export type MissionPhase =
+  | 'READY'
+  | 'ACTIVE'
+  | 'RETURNING_TO_BASE'
+  | 'ABORTED'
+  | 'COMPLETED'
 
 const INTRO_KEY = 'aerotwin_intro_seen'
 
@@ -99,6 +115,19 @@ interface TwinStore {
   /** Collapsed corner card, so the overlay can never hide a control. */
   cornerCollapsed: boolean
 
+  /** Where the sortie is. */
+  missionPhase: MissionPhase
+  /** The last command the operator issued, so the console can say what it is
+   *  doing *because somebody told it to* rather than on its own initiative. */
+  operatorCommand: OperatorCommand
+  /** The diversion track, in sector kilometres, once a recall has been
+   *  ordered. Drawn on the map so the new route is visibly not the plan. */
+  rtbRoute: Array<{ x: number; y: number }> | null
+  /** Operator decisions and mission milestones. Kept separate from the
+   *  ground station's own event stream, which arrives whole on every frame
+   *  and would overwrite anything appended locally. */
+  operatorLog: EventEntry[]
+
   start: () => void
   setCylinder: (index: number) => void
   setAnomaly: (id: string | null) => void
@@ -112,6 +141,15 @@ interface TwinStore {
   setStoryStep: (step: number) => void
   toggleCorner: () => void
   refreshStatus: () => Promise<void>
+  /** Start or resume, whichever the engine's current state calls for. */
+  ensureRunning: () => Promise<void>
+
+  /* Operator commands. Each one changes what the aircraft actually does; none
+     of them is only a label. */
+  commandContinue: () => void
+  commandReturnToBase: () => void
+  commandAbort: () => void
+  logEvent: (level: string, message: string) => void
 
   /** Simulation control. Every one of these goes through the engine; nothing
    *  in the UI commands the backend directly. */
@@ -164,6 +202,10 @@ export const useTwin = create<TwinStore>((set, get) => ({
   dock: 'CORNER',
   storyStep: -1,
   cornerCollapsed: false,
+  missionPhase: 'READY',
+  operatorCommand: 'NONE',
+  rtbRoute: null,
+  operatorLog: [],
 
   start: () => {
     if (started) return
@@ -295,6 +337,100 @@ export const useTwin = create<TwinStore>((set, get) => ({
     statusPoll = window.setInterval(() => void get().refreshStatus(), 8000)
   },
 
+  /* ---------------------------------------------------------- commands -- */
+
+  /**
+   * Make sure the clock is turning.
+   *
+   * `resume` only lifts a pause - from `idle` or `stopped` it is a no-op by
+   * design, because resuming something that was never started is meaningless.
+   * An operator command has to work from wherever the console happens to be,
+   * including straight after a reset, so this picks the right verb rather than
+   * asking the caller to know which one applies.
+   */
+  ensureRunning: async () => {
+    const status = simulation.getState().status
+    if (status === 'running' || status === 'starting') return
+    if (status === 'paused') { await simulation.resume(); return }
+    await simulation.start()
+  },
+
+  logEvent: (level, message) => {
+    const entry: EventEntry = {
+      t: new Date().toISOString(),
+      level,
+      source: 'OPERATOR',
+      message,
+    }
+    // Newest first, and bounded: this is a mission log, not an audit trail.
+    set({ operatorLog: [entry, ...get().operatorLog].slice(0, 60) })
+  },
+
+  /**
+   * Fly on.
+   *
+   * Deliberately does not clear anything. The deviation that prompted the
+   * decision is still there, the health index still says what it said, and the
+   * twin keeps running - continuing is a choice to accept a known risk, not a
+   * way of making it go away. All this does is release the aircraft back onto
+   * the plan and record who released it.
+   */
+  commandContinue: () => {
+    if (get().missionPhase === 'ABORTED' || get().missionPhase === 'COMPLETED') return
+    flightDynamics.frozen = false
+    if (flightDynamics.diverted) flightDynamics.restorePlan()
+    set({ missionPhase: 'ACTIVE', operatorCommand: 'CONTINUE', rtbRoute: null })
+    get().logEvent('INFO', 'Operator selected CONTINUE TO FLY')
+    get().logEvent('INFO', 'UAV continuing planned mission route')
+    void get().ensureRunning()
+  },
+
+  /**
+   * Recall.
+   *
+   * The diversion is built from where the aircraft actually is, not from the
+   * next waypoint - a recall that first flies on to the waypoint it was
+   * heading for is not a recall. The track is handed to the map so the new
+   * route is visibly not the plan.
+   */
+  commandReturnToBase: () => {
+    const phase = get().missionPhase
+    if (phase === 'ABORTED' || phase === 'COMPLETED' || phase === 'RETURNING_TO_BASE') return
+
+    const waypoints = (get().sector?.waypoints ?? []) as Array<{ id: string; x: number; y: number }>
+    const base = waypoints.find((w) => w.id === 'BASE') ?? { x: 18, y: 22 }
+
+    flightDynamics.frozen = false
+    const legs = flightDynamics.divertToBase({ x: base.x, y: base.y })
+
+    set({
+      missionPhase: 'RETURNING_TO_BASE',
+      operatorCommand: 'RETURN_TO_BASE',
+      rtbRoute: legs.map((l) => ({ x: l.x, y: l.y })),
+    })
+    get().logEvent('WARN', 'Operator selected RETURN TO BASE')
+    get().logEvent('INFO', 'RTB route activated')
+    get().logEvent('INFO', 'UAV returning to base')
+    void get().ensureRunning()
+  },
+
+  /**
+   * Stop where you are.
+   *
+   * Not a pause and not a reset. The aircraft holds its position and every
+   * reading keeps the value it had at the moment the command was given, so the
+   * final state stays available for whoever has to explain it afterwards.
+   */
+  commandAbort: () => {
+    if (get().missionPhase === 'ABORTED') return
+    flightDynamics.frozen = true
+    set({ missionPhase: 'ABORTED', operatorCommand: 'ABORT' })
+    get().logEvent('CRIT', 'Operator selected ABORT MISSION')
+    get().logEvent('CRIT', 'Mission aborted by operator')
+    get().logEvent('INFO', 'UAV movement stopped - final state preserved')
+    void simulation.pause()
+  },
+
   setCylinder: (index) => set({ selectedCylinder: index }),
   setAnomaly: (id) => set({ selectedAnomaly: id }),
   enterMission: () => {
@@ -387,9 +523,13 @@ export const useTwin = create<TwinStore>((set, get) => ({
 
   resetSim: async () => {
     await simulation.reset()
+    // Everything the operator changed goes back too, or a reset would leave
+    // the aircraft recalled and frozen over a fresh sortie.
+    flightDynamics.restorePlan()
     set({
       history: {}, healthTrail: [], alerts: null, residuals: null,
       selectedAnomaly: null, demoRunning: false,
+      missionPhase: 'READY', operatorCommand: 'NONE', rtbRoute: null, operatorLog: [],
     })
     await get().refreshStatus()
   },

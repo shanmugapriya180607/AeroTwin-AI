@@ -49,6 +49,19 @@ const KT_TO_KM_S = 1.852 / 3600
 
 export class FlightDynamics {
   state: FlightState
+  /**
+   * Stopped where it is.
+   *
+   * An abort is not a pause and not a reset: the aircraft holds its last
+   * position and every number on the console keeps the value it had at the
+   * moment the operator called it. So the integrator returns without touching
+   * anything rather than being unmounted or wound back.
+   */
+  frozen = false
+  /** True once the planned route has been replaced by a diversion, so a
+   *  sector update cannot quietly put the aircraft back on the mission. */
+  diverted = false
+  private plan: RouteLeg[] = []
   private route: RouteLeg[] = []
   private target = 0
   private turnRate = 0
@@ -72,6 +85,13 @@ export class FlightDynamics {
 
   setRoute(route: RouteLeg[]) {
     if (!route.length) return
+    // The plan is remembered whatever happens next, so a diversion can be
+    // undone without having to rebuild it from the sector.
+    this.plan = route
+    // A diversion outranks the plan. Without this a sector frame arriving
+    // mid-return would put the aircraft back on the mission route it was
+    // just recalled from.
+    if (this.diverted) return
     this.route = route
     this.totalLength = route.reduce((sum, leg, i) => {
       if (i === 0) return 0
@@ -125,6 +145,7 @@ export class FlightDynamics {
   }
 
   step(dt: number, commandedAltFt: number, commandedSpeedKt: number) {
+    if (this.frozen) return this.state
     if (!this.route.length) return this.state
     const s = this.state
     const leg = this.route[Math.min(this.target, this.route.length - 1)]
@@ -195,6 +216,59 @@ export class FlightDynamics {
     }
 
     return s
+  }
+
+  /**
+   * Leave the mission and route home from wherever the aircraft is.
+   *
+   * The diversion starts at the current position rather than at the next
+   * waypoint - that is the whole point of a recall. Two legs: where it is now,
+   * and the field. The aircraft flies it with the same integrator as the
+   * mission route, so it turns onto the new heading rather than snapping to it.
+   */
+  divertToBase(base: { x: number; y: number; altitudeFt?: number; speedKt?: number }): RouteLeg[] {
+    const here = this.state
+    const leg: RouteLeg[] = [
+      {
+        id: 'DIVERT',
+        x: here.position.x,
+        y: here.position.z,
+        altitudeFt: here.altitudeFt,
+        speedKt: Math.max(70, here.speedKt),
+      },
+      {
+        id: 'BASE',
+        x: base.x,
+        y: base.y,
+        altitudeFt: base.altitudeFt ?? 900,
+        speedKt: base.speedKt ?? 96,
+      },
+    ]
+    this.route = leg
+    this.diverted = true
+    this.target = 1
+    this.travelled = 0
+    this.totalLength = Math.hypot(base.x - here.position.x, base.y - here.position.z) || 1
+    return leg
+  }
+
+  /** How far the aircraft still is from a point, in km. */
+  distanceTo(x: number, y: number): number {
+    return Math.hypot(x - this.state.position.x, y - this.state.position.z)
+  }
+
+  /** Put the aircraft back on the planned mission route. */
+  restorePlan() {
+    this.diverted = false
+    this.frozen = false
+    if (this.plan.length) {
+      this.route = this.plan
+      this.target = 1
+      this.travelled = 0
+      this.totalLength = this.plan.reduce((sum, l, i) => (
+        i === 0 ? 0 : sum + Math.hypot(l.x - this.plan[i - 1].x, l.y - this.plan[i - 1].y)
+      ), 0) || 1
+    }
   }
 
   get activeLeg() {

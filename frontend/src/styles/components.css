@@ -1957,3 +1957,105 @@ input[type='range']::-moz-range-thumb {
   border-radius: 100px;
   background: var(--crit-dim);
 }
+
+/* ==========================================================================
+   Operator command
+
+   The decision panel. Weighted so the recommendation is legible without being
+   read, and so the command AeroTwin is arguing for is obvious - without the
+   others being hidden, because the operator is the one deciding.
+   ========================================================================== */
+
+.opcmd__advice {
+  margin-top: 14px;
+  padding: 11px 13px;
+  border-radius: var(--r);
+  border-left: 3px solid var(--accent);
+  background: var(--panel-2);
+}
+
+.opcmd__advice--ok { border-left-color: var(--ok); background: var(--ok-dim); }
+.opcmd__advice--caution { border-left-color: var(--caution); background: var(--caution-dim); }
+.opcmd__advice--warn { border-left-color: var(--warn); background: var(--warn-dim); }
+.opcmd__advice--crit { border-left-color: var(--crit); background: var(--crit-dim); }
+
+.opcmd__advice-k {
+  display: block;
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--ink-3);
+}
+
+.opcmd__advice-v {
+  display: block;
+  margin-top: 4px;
+  font-size: var(--t-lead);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--ink);
+}
+
+.opcmd__advice-why {
+  display: block;
+  margin-top: 3px;
+  font-size: var(--t-small);
+  color: var(--ink-3);
+}
+
+.opcmd__buttons { display: flex; flex-direction: column; gap: 7px; }
+
+.opcmd__btn {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 11px 13px;
+  border-radius: var(--r);
+  border: 1px solid var(--hairline-strong);
+  background: var(--panel-2);
+  color: var(--ink-2);
+  font-size: var(--t-small);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  transition: all var(--fast) var(--ease);
+}
+
+.opcmd__btn:hover { border-color: var(--accent); color: var(--accent-ink); background: var(--accent-dim); }
+
+/* The one the console would pick. Heavier, but never the only one offered. */
+.opcmd__btn--advised {
+  border-color: rgba(10, 110, 214, 0.55);
+  background: var(--accent-dim);
+  color: var(--accent-ink);
+  box-shadow: 0 0 0 1px rgba(10, 110, 214, 0.18);
+}
+
+.opcmd__btn em {
+  margin-left: auto;
+  font-style: normal;
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  letter-spacing: 0.12em;
+  opacity: 0.85;
+}
+
+.opcmd__btn--abort { border-color: rgba(225, 50, 50, 0.4); color: var(--crit-ink); }
+.opcmd__btn--abort:hover { border-color: var(--crit); background: var(--crit-dim); color: var(--crit-ink); }
+
+.opcmd__log { list-style: none; margin: 7px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+
+.opcmd__log li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  letter-spacing: 0.04em;
+  color: var(--ink-3);
+}
+
+.opcmd__log-warn { color: var(--warn-ink); font-weight: 600; }
+.opcmd__log-crit { color: var(--crit-ink); font-weight: 700; }

@@ -344,6 +344,8 @@ function Scene({
 
   const commanded = useRef({ alt: 900, speed: 74 })
   const reconcileTimer = useRef(0)
+  /** So "approaching base" is logged once per recall, not once per frame. */
+  const approaching = useRef(false)
 
   useFrame((_, delta) => {
     // Clamped so a stalled tab cannot integrate a huge step, but generous
@@ -352,8 +354,30 @@ function Scene({
     // Held to zero whenever the simulation is held: the aircraft's position is
     // a simulated quantity like any other, and an aeroplane still flying its
     // route over frozen telemetry is the same lie as a turning propeller.
-    const dt = simClock.running ? Math.min(0.1, delta) : 0
-    if (dt === 0) return
+    if (!simClock.running) return
+
+    /*
+     * Integrated at the simulation's rate, and for the whole frame.
+     *
+     * Two faults here, and they hid each other. The model ran in real time
+     * while the ground station advanced at 20x, so the aircraft crawled and
+     * only appeared to keep up because the reconciler kept dragging it
+     * forward in twenty-six kilometre corrections - movement that reads as a
+     * marker stuttering between positions rather than an aeroplane flying.
+     * And clamping the frame to 0.1 s discarded real time whenever the
+     * renderer dropped below 10 fps, so on a software rasteriser it crawled
+     * again on top of that.
+     *
+     * Scaling by the clock's own rate puts the model on the same time base as
+     * the telemetry beside it. Sub-stepping keeps each step small enough to
+     * stay stable while still integrating the time that actually passed; the
+     * outer cap is what stops a backgrounded tab resuming in one huge jump.
+     */
+    const scale = Math.max(0.05, simClock.speed || 1)
+    const frame = Math.min(0.5, delta) * scale
+    const steps = Math.max(1, Math.min(16, Math.ceil(frame / 0.05)))
+    const dt = frame / steps
+    if (dt <= 0) return
 
     // Command altitude and speed from the twin's live telemetry, falling back
     // to the leg's planned figures when no frame has arrived yet.
@@ -363,16 +387,42 @@ function Scene({
     commanded.current.alt = liveAlt && liveAlt > 50 ? liveAlt : leg?.altitudeFt ?? 900
     commanded.current.speed = liveIas && liveIas > 5 ? liveIas : leg?.speedKt ?? 80
 
-    const state = dynamics.step(dt, commanded.current.alt, commanded.current.speed)
+    let state = dynamics.state
+    for (let i = 0; i < steps; i += 1) {
+      state = dynamics.step(dt, commanded.current.alt, commanded.current.speed)
+    }
 
     // Drift back toward the backend's authoritative sector position slowly, so
     // the 3D track and the tactical picture do not diverge over a long sortie.
-    reconcileTimer.current += dt
-    if (reconcileTimer.current > 1 && mission?.mission?.position) {
+    reconcileTimer.current += frame
+    if (!dynamics.diverted && reconcileTimer.current > 1 && mission?.mission?.position) {
       reconcileTimer.current = 0
       const p = mission.mission.position
       const far = Math.hypot(p.x - state.position.x, p.y - state.position.z) > 26
       if (far) dynamics.reconcile(p.x, p.y, commanded.current.alt, 0.16)
+    }
+
+    /* Arrival.
+       A recall ends when the aircraft is actually over the field, not when a
+       timer says it should be - so it is tested against the flight model's own
+       position, on the same frame that moved it. Read through getState so a
+       check that runs every frame does not re-render the tree. */
+    const twin = useTwin.getState()
+    if (twin.missionPhase === 'RETURNING_TO_BASE') {
+      const wps = (twin.sector?.waypoints ?? []) as Array<{ id: string; x: number; y: number }>
+      const base = wps.find((w) => w.id === 'BASE') ?? { x: 18, y: 22 }
+      const range = dynamics.distanceTo(base.x, base.y)
+      if (range < 12 && !approaching.current) {
+        approaching.current = true
+        twin.logEvent('INFO', 'UAV approaching base')
+      }
+      if (range < 2.2) {
+        dynamics.frozen = true
+        approaching.current = false
+        useTwin.setState({ missionPhase: 'COMPLETED' })
+        twin.logEvent('INFO', 'UAV reached base')
+        twin.logEvent('INFO', 'Mission safely completed')
+      }
     }
 
     visual.current.rpm = telemetry?.tick.channels?.rpm ?? mission?.rpm ?? 2200
