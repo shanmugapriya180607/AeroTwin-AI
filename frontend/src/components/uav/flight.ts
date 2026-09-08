@@ -72,6 +72,15 @@ export class FlightDynamics {
    * anything rather than being unmounted or wound back.
    */
   frozen = false
+  /**
+   * On the ground, or climbing out, but not yet flying the route.
+   *
+   * The launch needs an aircraft that gains height without going anywhere: one
+   * that starts tracking to WP-01 the instant the engine catches has not taken
+   * off, it has teleported. While this is set the integrator runs the vertical
+   * axis only and leaves the ground position where it is.
+   */
+  groundHold = true
   /** True once the planned route has been replaced by a diversion, so a
    *  sector update cannot quietly put the aircraft back on the mission. */
   diverted = false
@@ -161,6 +170,25 @@ export class FlightDynamics {
   step(dt: number, commandedAltFt: number, commandedSpeedKt: number) {
     if (this.frozen) return this.state
     if (!this.route.length) return this.state
+
+    /* Climbing out. Height and speed build; the ground track does not move.
+       The same integrator with the horizontal terms switched off, so the state
+       the rest of the console reads stays continuous through the transition
+       rather than being handed between two models. */
+    if (this.groundHold) {
+      const s0 = this.state
+      const climb = (3200 / 60) * dt                 // 3200 ft/min, watchable
+      s0.altitudeFt += Math.max(-climb, Math.min(climb, commandedAltFt - s0.altitudeFt))
+      s0.speedKt += (commandedSpeedKt - s0.speedKt) * Math.min(1, dt * 0.5)
+      const remaining = commandedAltFt - s0.altitudeFt
+      s0.pitch = Math.max(0, Math.min(0.16, remaining * 0.00016))
+      s0.bank = 0
+      s0.position.y = Math.max(
+        terrainHeight(s0.position.x, s0.position.z) + GROUND_CLEARANCE,
+        s0.altitudeFt * FT_TO_KM * ALT_EXAGGERATION,
+      )
+      return s0
+    }
     const s = this.state
     const leg = this.route[Math.min(this.target, this.route.length - 1)]
 

@@ -37,6 +37,7 @@
 import { create } from 'zustand'
 import type { Anomaly, Advisory } from '../types'
 import { useSettings } from './useSettings'
+import { useTwin } from './useTwin'
 import { isSpeaking, phraseFor, silence, speak, voiceStatus } from '../services/voice'
 
 export type Level = 'INFO' | 'WARNING' | 'CRITICAL'
@@ -155,6 +156,10 @@ interface NotificationStore {
   /** Take the toast off screen. Explicitly *not* an acknowledgement: the alert
    *  stays outstanding and the voice keeps going. */
   dismissToast: (id: string) => void
+  /** A launch milestone. Informational, and never spoken from here - the
+   *  sequencer says those lines itself on the same transition, so the two
+   *  cannot drift apart. */
+  pushMissionEvent: (text: string, key: string) => void
   /** The one thing that ends a spoken alert. */
   acknowledge: (id: string) => void
   acknowledgeAll: () => void
@@ -192,6 +197,12 @@ export const useNotifications = create<NotificationStore>((set, get) => ({
     .sort((a, b) => RANK[b.level] - RANK[a.level] || a.at - b.at),
 
   ingest: (anomalies, advisories) => {
+    /* Nothing is raised until the aircraft is away.
+       A cylinder deviation announced over a pre-flight checklist is noise at
+       the one moment the operator is watching something else, and before ENTER
+       MISSION there is no sortie for a finding to be about. */
+    if (!useTwin.getState().missionLive) return
+
     const settings = useSettings.getState()
     const live = new Set(anomalies.filter((a) => !a.abstained).map((a) => a.id))
     const existing = get().items
@@ -271,6 +282,35 @@ export const useNotifications = create<NotificationStore>((set, get) => ({
         ? [...interrupting, ...get().toasts.filter((t) => !interrupting.includes(t))].slice(0, MAX_TOASTS)
         : get().toasts,
     })
+  },
+
+  pushMissionEvent: (text, key) => {
+    const entry: Notification = {
+      id: `mission:${key}:${Date.now()}`,
+      sourceId: `mission:${key}`,
+      level: 'INFO',
+      title: text,
+      body: '',
+      cylinder: null,
+      confidence: null,
+      calibrated: true,
+      evidence: 'Mission sequence',
+      action: null,
+      parameter: null,
+      trend: null,
+      persistent: false,
+      conditionActive: true,
+      // A milestone is a record, not something to chase: no acknowledgement
+      // needed and it never enters the spoken queue.
+      acknowledged: true,
+      acknowledgedAt: Date.now(),
+      announcements: 0,
+      lastSpokenAt: null,
+      spoken: null,
+      at: Date.now(),
+      read: false,
+    }
+    set({ items: [entry, ...get().items].slice(0, MAX_HISTORY) })
   },
 
   dismissToast: (id) => set({ toasts: get().toasts.filter((t) => t !== id) }),

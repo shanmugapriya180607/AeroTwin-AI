@@ -256,6 +256,18 @@ export function silence() {
   }
 }
 
+/**
+ * Say one prepared line.
+ *
+ * The launch callouts are not findings - no cylinder, no residual, no severity
+ * - so they do not go through `phraseFor`. Same gate though: if the browser
+ * will not let us speak this returns false and the sequence carries on
+ * silently rather than pretending it was heard.
+ */
+export function announce(text: string, volume: number): boolean {
+  return speak(text, { volume, withTone: false })
+}
+
 /** A sample announcement, for the Test control in Settings. */
 export function speakTest(volume: number): boolean {
   return speak('Voice alerts are working. This is a test announcement.', { volume })

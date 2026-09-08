@@ -23,6 +23,10 @@ import {
 } from '../simulation'
 import { flightDynamics } from '../components/uav/flight'
 import type { OperatorCommand } from '../mission/decision'
+import { launchSequencer } from '../mission/launch'
+import { useNotifications } from './useNotifications'
+import { useSettings } from './useSettings'
+import { announce, voiceStatus } from '../services/voice'
 import type {
   AlertFrame, Anomaly, EventEntry, MissionFrame, ResidualFrame, Sector,
   SystemStatus, TelemetryFrame,
@@ -48,6 +52,15 @@ export type Dock = 'CORNER' | 'HERO'
  */
 export type MissionPhase =
   | 'READY'
+  | 'INITIALIZING'
+  | 'PRE_FLIGHT'
+  | 'PRE_FLIGHT_COMPLETE'
+  | 'PRE_FLIGHT_FAILED'
+  | 'ENGINE_STARTING'
+  | 'ENGINE_READY'
+  | 'TAKEOFF'
+  | 'CLIMB'
+  | 'SAFE_ALTITUDE'
   | 'ACTIVE'
   | 'RETURNING_TO_BASE'
   | 'ABORTED'
@@ -127,6 +140,16 @@ interface TwinStore {
    *  ground station's own event stream, which arrives whole on every frame
    *  and would overwrite anything appended locally. */
   operatorLog: EventEntry[]
+  /** The launch status line. */
+  missionLabel: string
+  /** Set once the aircraft is away. Normal alerting - anomaly toasts and
+   *  spoken findings - is held until then, so a launch is not narrated over
+   *  by a cylinder deviation. */
+  missionLive: boolean
+  /** Pre-flight results, by check id. Drives the panel. */
+  preflight: Record<string, { state: string; detail?: string }>
+  /** Why the launch was refused, when it was. */
+  preflightFailure: { label: string; detail: string } | null
 
   start: () => void
   setCylinder: (index: number) => void
@@ -143,6 +166,9 @@ interface TwinStore {
   refreshStatus: () => Promise<void>
   /** Start or resume, whichever the engine's current state calls for. */
   ensureRunning: () => Promise<void>
+  /** ENTER MISSION. Runs the pre-flight, the engine start and the climb-out
+   *  before anything flies the route. Idempotent. */
+  launchMission: () => Promise<void>
 
   /* Operator commands. Each one changes what the aircraft actually does; none
      of them is only a label. */
@@ -206,6 +232,10 @@ export const useTwin = create<TwinStore>((set, get) => ({
   operatorCommand: 'NONE',
   rtbRoute: null,
   operatorLog: [],
+  missionLabel: 'MISSION STANDBY',
+  missionLive: false,
+  preflight: {},
+  preflightFailure: null,
 
   start: () => {
     if (started) return
@@ -305,7 +335,11 @@ export const useTwin = create<TwinStore>((set, get) => ({
         graceTimer = null
       }
       simulation.attach(live)
-      simulation.adopt(Number(get().mission?.mission?.duration_s) || 0)
+      /* Adopted held, whatever the ground station is doing.
+         Opening the console is not a request to fly: the stream is connected
+         and the picture is live, but frames are dropped at the gate until
+         ENTER MISSION runs the launch. */
+      simulation.adopt(Number(get().mission?.mission?.duration_s) || 0, true)
       set({ mode: 'LIVE' })
       // The ground station keeps its paused flag between console sessions, so
       // a pause left over from an earlier one would open this console onto a
@@ -319,7 +353,7 @@ export const useTwin = create<TwinStore>((set, get) => ({
     function fallBackToLocal() {
       if (liveSeen || simulation.transportKind === 'LOCAL') return
       simulation.attach(local)
-      simulation.adopt(local.feed.duration)
+      simulation.adopt(local.feed.duration, true)
       set({ mode: 'DEMO' })
     }
 
@@ -335,6 +369,88 @@ export const useTwin = create<TwinStore>((set, get) => ({
     void get().refreshStatus()
     void api.sector().then((sector) => sector && set({ sector }))
     statusPoll = window.setInterval(() => void get().refreshStatus(), 8000)
+  },
+
+  /* ------------------------------------------------------------ launch -- */
+
+  /**
+   * ENTER MISSION.
+   *
+   * Idempotent: the sequencer refuses to begin while it is already running and
+   * this refuses to command the transport twice, so five clicks launch one
+   * sortie. Every side effect the sequence has - status, checklist,
+   * notification, callout, and whether the route may be flown - goes through
+   * the one `onPhase` hook below, which is what keeps them from drifting
+   * apart.
+   */
+  launchMission: async () => {
+    if (get().missionPhase !== 'READY' || launchSequencer.running) return
+
+    set({
+      missionPhase: 'INITIALIZING',
+      missionLabel: 'MISSION INITIALIZING',
+      preflight: {},
+      preflightFailure: null,
+    })
+
+    try {
+      await get().releaseIfHeld()
+      await get().ensureRunning()
+      await get().refreshStatus()
+    } catch {
+      set({ missionPhase: 'READY', missionLabel: 'MISSION STANDBY' })
+      return
+    }
+
+    const settings = () => useSettings.getState()
+    const canSpeak = () => settings().voiceAlerts && voiceStatus() === 'READY'
+
+    launchSequencer.begin({
+      context: () => {
+        const st = get()
+        return {
+          telemetry: st.telemetry,
+          mission: st.mission,
+          alerts: st.alerts,
+          status: st.status,
+          mode: st.mode,
+        }
+      },
+
+      // Everything a phase change means, in one place.
+      onPhase: (spec) => {
+        set({
+          missionPhase: spec.phase as MissionPhase,
+          missionLabel: spec.label,
+          missionLive: spec.phase === 'ACTIVE',
+        })
+        if (spec.notice) {
+          useNotifications.getState().pushMissionEvent(spec.notice, spec.phase)
+          get().logEvent('INFO', spec.notice)
+        }
+        if (spec.say && canSpeak()) announce(spec.say, settings().voiceVolume)
+      },
+
+      onCheck: (id, state, detail) => {
+        set({ preflight: { ...get().preflight, [id]: { state, detail } } })
+      },
+
+      onFailed: (label, detail) => {
+        set({
+          missionPhase: 'PRE_FLIGHT_FAILED',
+          missionLabel: 'PRE-FLIGHT FAILED',
+          missionLive: false,
+          preflightFailure: { label, detail },
+        })
+        get().logEvent('CRIT', `Pre-flight failed: ${label} - ${detail}`)
+        useNotifications.getState().pushMissionEvent(`Pre-flight failed: ${label}`, 'PREFLIGHT_FAIL')
+        if (canSpeak()) announce('Pre-flight check failed. Takeoff is inhibited.', settings().voiceVolume)
+        void simulation.pause()
+      },
+
+      isRunning: () => simulation.clock.running,
+      say: (line) => { if (canSpeak()) announce(line, settings().voiceVolume) },
+    })
   },
 
   /* ---------------------------------------------------------- commands -- */
@@ -379,7 +495,15 @@ export const useTwin = create<TwinStore>((set, get) => ({
     if (get().missionPhase === 'ABORTED' || get().missionPhase === 'COMPLETED') return
     flightDynamics.frozen = false
     if (flightDynamics.diverted) flightDynamics.restorePlan()
-    set({ missionPhase: 'ACTIVE', operatorCommand: 'CONTINUE', rtbRoute: null })
+    set({
+      missionPhase: 'ACTIVE', operatorCommand: 'CONTINUE', rtbRoute: null,
+      missionLabel: 'MISSION ACTIVE', missionLive: true,
+    })
+    // Continuing from the ground means flying the launch first.
+    if (flightDynamics.groundHold && !launchSequencer.running) {
+      void get().launchMission()
+      return
+    }
     get().logEvent('INFO', 'Operator selected CONTINUE TO FLY')
     get().logEvent('INFO', 'UAV continuing planned mission route')
     void get().ensureRunning()
@@ -403,10 +527,15 @@ export const useTwin = create<TwinStore>((set, get) => ({
     flightDynamics.frozen = false
     const legs = flightDynamics.divertToBase({ x: base.x, y: base.y })
 
+    // A recall releases the ground hold: the aircraft is flying home, not
+    // still sitting on the launch profile.
+    flightDynamics.groundHold = false
     set({
       missionPhase: 'RETURNING_TO_BASE',
       operatorCommand: 'RETURN_TO_BASE',
       rtbRoute: legs.map((l) => ({ x: l.x, y: l.y })),
+      missionLabel: 'RETURNING TO BASE',
+      missionLive: true,
     })
     get().logEvent('WARN', 'Operator selected RETURN TO BASE')
     get().logEvent('INFO', 'RTB route activated')
@@ -424,7 +553,10 @@ export const useTwin = create<TwinStore>((set, get) => ({
   commandAbort: () => {
     if (get().missionPhase === 'ABORTED') return
     flightDynamics.frozen = true
-    set({ missionPhase: 'ABORTED', operatorCommand: 'ABORT' })
+    set({
+      missionPhase: 'ABORTED', operatorCommand: 'ABORT',
+      missionLabel: 'MISSION ABORTED', missionLive: false,
+    })
     get().logEvent('CRIT', 'Operator selected ABORT MISSION')
     get().logEvent('CRIT', 'Mission aborted by operator')
     get().logEvent('INFO', 'UAV movement stopped - final state preserved')
@@ -435,6 +567,9 @@ export const useTwin = create<TwinStore>((set, get) => ({
   setAnomaly: (id) => set({ selectedAnomaly: id }),
   enterMission: () => {
     if (get().flightMode !== 'DASHBOARD') return
+    // The button an operator already reaches for is the one that launches -
+    // rather than a second control beside it.
+    void get().launchMission()
     set({ flightMode: 'TRANSITION_OUT' })
     window.setTimeout(() => set({ flightMode: 'MISSION', cameraMode: 'CINEMATIC' }), 1500)
   },
@@ -530,7 +665,10 @@ export const useTwin = create<TwinStore>((set, get) => ({
       history: {}, healthTrail: [], alerts: null, residuals: null,
       selectedAnomaly: null, demoRunning: false,
       missionPhase: 'READY', operatorCommand: 'NONE', rtbRoute: null, operatorLog: [],
+      missionLabel: 'MISSION STANDBY', missionLive: false,
+      preflight: {}, preflightFailure: null,
     })
+    launchSequencer.reset()
     await get().refreshStatus()
   },
 

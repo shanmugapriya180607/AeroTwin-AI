@@ -12,6 +12,7 @@ import { api } from '../services/api'
 import { useTwin } from '../store/useTwin'
 import { flightDynamics } from '../components/uav/flight'
 import { OperatorCommand } from '../components/mission/OperatorCommand'
+import { PreFlight } from '../components/mission/PreFlight'
 import {
   Badge, Empty, Kv, Meter, Note, PageHead, Stat, StatusBadge, clock, fmt, pct,
 } from '../components/ui/Primitives'
@@ -233,6 +234,9 @@ export default function MissionControl() {
         </section>
 
         <div className="stack">
+          {/* Shown only while the sortie is being launched; it removes itself
+              once the aircraft is away and the operator panel takes over. */}
+          <PreFlight />
           <OperatorCommand />
 
           <section className="panel">

@@ -2059,3 +2059,120 @@ input[type='range']::-moz-range-thumb {
 
 .opcmd__log-warn { color: var(--warn-ink); font-weight: 600; }
 .opcmd__log-crit { color: var(--crit-ink); font-weight: 700; }
+
+/* ==========================================================================
+   Pre-flight
+
+   Same surfaces, type and spacing as every other panel - this is a checklist
+   in the console, not a modal from a different product.
+   ========================================================================== */
+
+.pf--failed { border-color: rgba(225, 50, 50, 0.42); }
+
+.pf__phase {
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--accent-ink);
+  white-space: nowrap;
+}
+
+.pf__phase--failed { color: var(--crit-ink); }
+
+.pf__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+
+.pf__row {
+  display: grid;
+  grid-template-columns: 18px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--hairline);
+  /* Items not yet reached stay legible but recede - the sweep should be
+     obvious without the pending rows disappearing. */
+  color: var(--ink-4);
+  transition: color var(--fast) var(--ease);
+}
+
+.pf__row:last-child { border-bottom: none; }
+.pf__row--checking { color: var(--ink-2); }
+.pf__row--ready { color: var(--ink); }
+.pf__row--warning { color: var(--warn-ink); }
+.pf__row--failed { color: var(--crit-ink); }
+
+.pf__mark { display: grid; place-items: center; }
+
+.pf__dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--ink-5);
+}
+
+.pf__row--ready .pf__mark { color: var(--ok-ink); }
+.pf__row--warning .pf__mark { color: var(--warn-ink); }
+.pf__row--failed .pf__mark { color: var(--crit-ink); }
+.pf__row--checking .pf__mark { color: var(--accent-ink); }
+
+.pf__label { font-size: var(--t-small); font-weight: 600; }
+
+.pf__state {
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+
+/* The finding sits under the row rather than beside it: on a narrow panel a
+   third column would squeeze the label it is explaining. */
+.pf__detail {
+  grid-column: 2 / -1;
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  color: var(--ink-3);
+  margin-top: 2px;
+}
+
+.pf__spin { animation: at-spin 1.1s linear infinite; }
+
+/* ---- climb-out ---------------------------------------------------------- */
+
+.pf__climb {
+  display: flex;
+  align-items: stretch;
+  gap: 14px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--hairline);
+}
+
+/* A climb is a vertical quantity, so the indicator is vertical. */
+.pf__tape {
+  position: relative;
+  width: 8px;
+  min-height: 62px;
+  border-radius: 4px;
+  background: var(--panel-3);
+  overflow: hidden;
+}
+
+.pf__tape-fill {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 0;
+  background: linear-gradient(180deg, var(--ok), var(--accent));
+  transition: height 120ms linear;
+}
+
+.pf__climb-figs { display: flex; flex-direction: column; justify-content: center; gap: 10px; }
+.pf__climb-figs > div { display: flex; flex-direction: column; gap: 2px; }
+
+.pf__k {
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--ink-3);
+}
+
+.pf__v { font-size: var(--t-num); font-weight: 700; color: var(--ink); line-height: 1.1; }

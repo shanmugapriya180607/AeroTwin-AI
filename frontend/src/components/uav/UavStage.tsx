@@ -26,6 +26,7 @@ import {
 } from './Environment'
 import { terrainHeight } from './terrain'
 import { FALLBACK_ROUTE, FlightDynamics, flightDynamics, routeFromSector } from './flight'
+import { launchSequencer } from '../../mission/launch'
 import { UavModel, type UavVisualState } from './UavModel'
 
 /* -------------------------------------------------------- camera rig ----- */
@@ -373,7 +374,14 @@ function Scene({
      * stay stable while still integrating the time that actually passed; the
      * outer cap is what stops a backgrounded tab resuming in one huge jump.
      */
-    const scale = Math.max(0.05, simClock.speed || 1)
+    /* The launch is paced by the wall clock, not the simulation's.
+       Everything else is scaled so the aircraft keeps time with a ground
+       station running at 20x - but a climb-out scaled the same way is over in
+       under a second, and the phase the operator is meant to watch never
+       appears. The sequence is cinematic, so it runs at the rate a person
+       reads it at, identically at 1x and 200x. Pause still freezes it: this
+       whole callback returns early when the clock is stopped. */
+    const scale = flightDynamics.groundHold ? 1 : Math.max(0.05, simClock.speed || 1)
     const frame = Math.min(0.5, delta) * scale
     const steps = Math.max(1, Math.min(16, Math.ceil(frame / 0.05)))
     const dt = frame / steps
@@ -399,11 +407,36 @@ function Scene({
      * toward the field the way it is actually being flown.
      */
     if (dynamics.diverted) {
-      commanded.current.alt = leg?.altitudeFt ?? 900
+      /*
+       * Descend on a profile, not on a timer.
+       *
+       * A fixed descent rate is wrong for a recall because the transit home is
+       * a different length every time: the aircraft either arrived overhead
+       * still at cruise, or was down to circuit height with sixty kilometres
+       * still to run. Tying the commanded altitude to the distance remaining -
+       * roughly a three-degree path, 318 ft per kilometre - means it holds
+       * cruise until the profile intercepts and then flies it down, arriving
+       * at circuit height whatever the range was when it was recalled.
+       */
+      const wp = (mission?.mission?.position ? sector?.waypoints : null) as
+        | Array<{ id: string; x: number; y: number }> | null | undefined
+      const home = wp?.find((w) => w.id === 'BASE') ?? { x: 18, y: 22 }
+      const rangeKm = dynamics.distanceTo(home.x, home.y)
+      const profileFt = Math.max(leg?.altitudeFt ?? 900, rangeKm * 318)
+      commanded.current.alt = Math.min(dynamics.state.altitudeFt + 200, profileFt)
       commanded.current.speed = leg?.speedKt ?? 96
     } else {
       commanded.current.alt = liveAlt && liveAlt > 50 ? liveAlt : leg?.altitudeFt ?? 900
       commanded.current.speed = liveIas && liveIas > 5 ? liveIas : leg?.speedKt ?? 80
+    }
+
+    /* While the launch owns the aircraft it commands the altitude: zero
+       through the checks, the climb target once rolling. The route's own
+       figures take back over the moment it is released. */
+    const launchAlt = launchSequencer.commandedAltitudeFt()
+    if (launchAlt !== null && dynamics.groundHold) {
+      commanded.current.alt = launchAlt
+      commanded.current.speed = launchAlt > 0 ? 78 : 0
     }
 
     let state = dynamics.state
@@ -435,9 +468,17 @@ function Scene({
         approaching.current = true
         twin.logEvent('INFO', 'UAV approaching base')
       }
-      if (range < 2.2) {
-        dynamics.frozen = true
+      /* Arrival is over the field *and* down.
+         Range alone declared the sortie closed with the aircraft still at six
+         thousand feet - the panel said "on the ground at base" under a corner
+         card reading AIRBORNE. Reaching the overhead is not landing. */
+      if (range < 2.2 && dynamics.state.altitudeFt <= 1200) {
         approaching.current = false
+        // Down. The readings should say so rather than freezing mid-approach.
+        dynamics.state.altitudeFt = 0
+        dynamics.state.speedKt = 0
+        dynamics.state.pitch = 0
+        dynamics.frozen = true
         useTwin.setState({ missionPhase: 'COMPLETED' })
         twin.logEvent('INFO', 'UAV reached base')
         twin.logEvent('INFO', 'Mission safely completed')
